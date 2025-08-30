@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini‑Webshop</title>
+  <style>
+    :root { --bg:#f7f7f9; --card:#fff; --muted:#6b7280; --text:#111827; --pri:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--text); }
+    .container{ max-width:1100px; margin:0 auto; padding:24px; }
+    h1{ margin:0 0 16px; font-size:28px; }
+    .tabs{ display:flex; gap:8px; margin-bottom:16px; }
+    .tab{ padding:8px 12px; border-radius:999px; background:#e5e7eb; cursor:pointer; font-weight:600; }
+    .tab.active{ background:var(--pri); color:#fff; }
+    .grid{ display:grid; gap:12px; }
+    @media(min-width:800px){ .layout{ display:grid; grid-template-columns:2fr 1fr; gap:16px; } .grid.products{ grid-template-columns:repeat(3, 1fr);} }
+    .card{ background:var(--card); border-radius:16px; box-shadow: 0 1px 2px rgba(0,0,0,.06); padding:16px; }
+    .row{ display:flex; align-items:center; gap:8px; }
+    .row.space{ justify-content:space-between; }
+    .muted{ color:var(--muted); font-size:12px; }
+    .btn{ appearance:none; border:0; background:var(--pri); color:#fff; padding:10px 12px; border-radius:10px; cursor:pointer; font-weight:600; }
+    .btn:disabled{ opacity:.6; cursor:not-allowed; }
+    .btn.link{ background:transparent; color:var(--pri); }
+    input, select, textarea{ width:100%; padding:10px; border-radius:10px; border:1px solid #e5e7eb; font:inherit; }
+    .totals div{ display:flex; justify-content:space-between; margin:6px 0; }
+    .danger{ color:#b91c1c; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Mini‑Webshop</h1>
+    <script>window.CONFIG={PRODUCTS_URL:"./products.json",ENDPOINT_URL:""};</script>
+    <div class="tabs">
+      <button id="tab-list" class="tab active">Alle Artikel</button>
+      <button id="tab-lines" class="tab">4 Positionen</button>
+    </div>
+    <div class="layout">
+      <div id="left" class="grid">
+        <div id="products-card" class="card">
+          <div class="row space"><strong>Artikel</strong><span id="products-status" class="muted">wird geladen…</span></div>
+          <div id="products" class="grid products" style="margin-top:12px;"></div>
+          <div id="lines" style="display:none;" class="grid"></div>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <strong>Zusammenfassung</strong>
+          <div id="cart" class="grid" style="margin-top:12px;"></div>
+          <div class="totals" style="margin-top:8px;">
+            <div><span>Netto</span><span id="t-net">0,00 €</span></div>
+            <div><span>MwSt.</span><span id="t-vat">0,00 €</span></div>
+            <div style="font-weight:700"><span>Brutto</span><span id="t-gross">0,00 €</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <strong>Kunde & Zahlung</strong>
+          <div class="grid" style="margin-top:12px; gap:10px;">
+            <input id="c-name" placeholder="Name"/>
+            <input id="c-email" type="email" placeholder="E‑Mail"/>
+            <input id="c-room" placeholder="Zimmer (optional)"/>
+            <textarea id="c-notes" rows="3" placeholder="Hinweise"></textarea>
+            <div><div class="muted" style="margin:4px 0;">Zahlart</div>
+              <select id="c-pay">
+                <option value="bar">Bar</option>
+                <option value="zimmer">Zimmerrechnung</option>
+                <option value="online">Karte / PayPal (Mollie)</option>
+              </select>
+            </div>
+            <button id="submit" class="btn">Bestellung abschicken</button>
+            <div id="msg" class="muted"></div>
+          </div>
+        </div>
+        <div class="muted">Hinweis: Im Modus „Alle Artikel“ kannst du beliebig viele verschiedene Artikel wählen. Im Modus „4 Positionen“ wählst du genau vier Zeilen (Dropdown + Menge).</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const fmt = n => (n||0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+    const state = { mode:'list', products:[], cart:[], lines:[{productId:'',qty:0},{productId:'',qty:0},{productId:'',qty:0},{productId:'',qty:0}] };
+
+    const tabList = document.getElementById('tab-list');
+    const tabLines = document.getElementById('tab-lines');
+    tabList.addEventListener('click',()=>setMode('list'));
+    tabLines.addEventListener('click',()=>setMode('lines'));
+    function setMode(m){ state.mode=m; tabList.classList.toggle('active',m==='list'); tabLines.classList.toggle('active',m==='lines'); document.getElementById('products').style.display=(m==='list')?'grid':'none'; document.getElementById('lines').style.display=(m==='lines')?'grid':'none'; render(); }
+
+    const statusEl = document.getElementById('products-status');
+
+    fetch(window.CONFIG.PRODUCTS_URL,{cache:'no-store'})
+      .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(rows=>{
+        const toNum=v=>{ if(v==null) return 0; const n=Number(String(v).replace(',','.')); return isNaN(n)?0:n; };
+        state.products = rows.map(r=>({ id:r.id, name:r.name, price_gross:toNum(r.price_gross), vat_rate:toNum(r.vat_rate) })).filter(p=>p.name);
+        statusEl.textContent = state.products.length+' Artikel geladen';
+        buildLinesUI(); render();
+      })
+      .catch(err=>{ statusEl.textContent='Fehler beim Laden: '+(err.message||err); });
+
+    function buildLinesUI(){
+      const wrap = document.getElementById('lines'); wrap.innerHTML = '';
+      state.lines.forEach((l, idx) => {
+        const card = document.createElement('div'); card.className = 'card';
+        const s = document.createElement('select');
+        const d0 = document.createElement('option'); d0.value=''; d0.textContent='Artikel wählen'; s.appendChild(d0);
+        state.products.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=(p.name||p.id)+' – '+fmt(p.price_gross)+' €'; s.appendChild(o); });
+        s.value = l.productId || ''; s.onchange = e => { state.lines[idx].productId=e.target.value; render(); };
+        const qty = document.createElement('input'); qty.type='number'; qty.min='0'; qty.value=l.qty; qty.oninput = e=>{ state.lines[idx].qty=Math.max(0, Number(e.target.value)||0); render(); };
+        const row = document.createElement('div'); row.className='row'; row.appendChild(s); row.appendChild(qty);
+        card.appendChild(row); wrap.appendChild(card);
+      });
+    }
+
+    function addToCart(p){ const ex = state.cart.find(i=>i.id==p.id); if(ex){ ex.qty+=1; } else { state.cart.push({id:p.id, name:p.name, price_gross:p.price_gross, vat_rate:p.vat_rate, qty:1}); } render(); }
+    function changeQty(id,q){ const it=state.cart.find(i=>i.id==id); if(!it) return; it.qty=Math.max(0, Number(q)||0); state.cart=state.cart.filter(i=>i.qty>0); render(); }
+
+    function currentItems(){ if(state.mode==='list') return state.cart.slice(); const items=[]; for(const l of state.lines){ const p=state.products.find(x=>String(x.id)===String(l.productId)); if(p&&l.qty>0){ items.push({id:p.id,name:p.name,price_gross:p.price_gross,vat_rate:p.vat_rate,qty:l.qty}); } } return items; }
+    function totals(){ const items=currentItems(); const gross=items.reduce((s,i)=>s+(i.price_gross||0)*(i.qty||0),0); const vatSum=items.reduce((s,i)=>{ const rate=Number(i.vat_rate||0)/100; const base=(i.price_gross||0); return s+(base-(base/(1+rate)))*(i.qty||0); },0); const net=gross-vatSum; return {items, net, vatSum, gross}; }
+
+    function render(){
+      const list=document.getElementById('products');
+      if(state.mode==='list'){
+        list.innerHTML='';
+        state.products.forEach(p=>{
+          const card=document.createElement('div'); card.className='card';
+          const title=document.createElement('div'); title.className='row space';
+          const name=document.createElement('div'); name.textContent=p.name||p.id;
+          const price=document.createElement('div'); price.className='muted'; price.textContent=fmt(p.price_gross)+' €';
+          title.appendChild(name); title.appendChild(price);
+          const btn=document.createElement('button'); btn.className='btn'; btn.textContent='Hinzufügen'; btn.onclick=()=>addToCart(p);
+          card.appendChild(title); card.appendChild(btn); list.appendChild(card);
+        });
+      }
+
+      const cartEl=document.getElementById('cart'); cartEl.innerHTML='';
+      if(state.mode==='list'){
+        if(state.cart.length===0){ const m=document.createElement('div'); m.className='muted'; m.textContent='Noch keine Artikel.'; cartEl.appendChild(m); }
+        state.cart.forEach(i=>{
+          const row=document.createElement('div'); row.className='row';
+          const x=document.createElement('button'); x.className='btn link'; x.textContent='X'; x.onclick=()=>{ state.cart=state.cart.filter(a=>a.id!==i.id); render(); };
+          const name=document.createElement('div'); name.style.flex='1'; name.textContent=i.name;
+          const qty=document.createElement('input'); qty.type='number'; qty.min='0'; qty.value=i.qty; qty.oninput=e=>changeQty(i.id, e.target.value);
+          const sum=document.createElement('div'); sum.textContent=fmt(i.qty*i.price_gross)+' €';
+          row.appendChild(x); row.appendChild(name); row.appendChild(qty); row.appendChild(sum); cartEl.appendChild(row);
+        });
+      }
+
+      const t=totals(); document.getElementById('t-net').textContent=fmt(t.net)+' €'; document.getElementById('t-vat').textContent=fmt(t.vatSum)+' €'; document.getElementById('t-gross').textContent=fmt(t.gross)+' €';
+    }
+
+    document.getElementById('submit').addEventListener('click', async ()=>{
+      const name=document.getElementById('c-name').value.trim();
+      const email=document.getElementById('c-email').value.trim();
+      const room=document.getElementById('c-room').value.trim();
+      const notes=document.getElementById('c-notes').value.trim();
+      const pay=document.getElementById('c-pay').value;
+      const msg=document.getElementById('msg');
+      const t=totals();
+      if(!t.items.length){ msg.textContent='Bitte mindestens einen Artikel wählen.'; msg.className='muted danger'; return; }
+      try{
+        const lines=t.items.map(i=>`- ${i.qty}× ${i.name} (${fmt(i.price_gross)} €)`).join('%0D%0A');
+        const details=[`Name: ${encodeURIComponent(name)}`,`E‑Mail: ${encodeURIComponent(email)}`,`Zimmer: ${encodeURIComponent(room)}`,`Hinweise: ${encodeURIComponent(notes)}`,`Zahlart: ${encodeURIComponent(pay)}`,'','Positionen:',lines,'',`Netto: ${fmt(t.net)} €`,`MwSt.: ${fmt(t.vatSum)} €`,`Brutto: ${fmt(t.gross)} €`].join('%0D%0A');
+        const mailto=`mailto:?subject=${encodeURIComponent('Bestellung Mini‑Webshop')}&body=${details}`;
+        window.location.href=mailto;
+        msg.textContent='E‑Mail‑Entwurf geöffnet. Bitte Versand im Mailprogramm bestätigen.';
+        state.cart=[]; state.lines=[{productId:'',qty:0},{productId:'',qty:0},{productId:'',qty:0},{productId:'',qty:0}]; render();
+      }catch(e){ msg.textContent='Fehler: '+(e.message||e); msg.className='muted danger'; }
+    });
+
+    render();
+  </script>
+</body>
+</html>
