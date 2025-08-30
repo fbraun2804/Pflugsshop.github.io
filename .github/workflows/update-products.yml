@@ -1,9 +1,9 @@
-name: Update products.json from Baserow
+name: Update products.json from Baserow (CSV)
 
 on:
   schedule:
-    - cron: "0 * * * *"   # stündlich
-  workflow_dispatch:      # manuell startbar
+    - cron: "0 * * * *"    # stündlich
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,87 +15,100 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Try fetching Baserow public view (robust)
+      - name: Fetch Baserow public view (CSV export)
         run: |
-          set -e
+          set -euxo pipefail
           SLUG="uSOIDTc6fT_AkuuyIc-wYUQCgD1XCz0SMM3k8MVQ-OA"
+          URL="https://db.pflugsmuehle.de/public/grid/${SLUG}/export/?format=csv"
+          echo "Fetching: $URL"
+          curl -fsSL "$URL" -o raw_baserow.csv
+          echo "First lines of CSV:"
+          head -n 5 raw_baserow.csv || true
 
-          # Kandidaten-URLs (wir probieren, bis eine 200 liefert)
-          CANDIDATES=(
-            "https://db.pflugsmuehle.de/public/grid/${SLUG}/export/?format=json"
-            "https://db.pflugsmuehle.de/api/public/grid/${SLUG}/?page=1&size=200&user_field_names=true"
-            "https://db.pflugsmuehle.de/public/grid/${SLUG}"  # Fallback: HTML (nur zum Debuggen)
-          )
-
-          STATUS=0
-          SUCCESS_URL=""
-          for URL in "${CANDIDATES[@]}"; do
-            echo ">> Versuch: $URL"
-            # Wir folgen Weiterleitungen (-L), zeigen Fehler (-S), schreiben Header/Status
-            HTTP_CODE=$(curl -sS -L -w "%{http_code}" -o raw_baserow.json "$URL" || true)
-            echo "HTTP_CODE=$HTTP_CODE"
-            # Wenn 200, stoppen
-            if [ "$HTTP_CODE" = "200" ]; then
-              SUCCESS_URL="$URL"
-              break
-            fi
-            # Zum Debug: ersten 300 Zeichen ausgeben
-            echo "Antwort-Auszug:"
-            head -c 300 raw_baserow.json || true
-            echo; echo "----"
-          done
-
-          if [ -z "$SUCCESS_URL" ]; then
-            echo "Keine der Kandidaten-URLs lieferte 200. Abbruch."
-            exit 1
-          fi
-
-          echo "Erfolgreich geladen von: $SUCCESS_URL"
-          echo "Erste 200 Zeichen:"
-          head -c 200 raw_baserow.json || true
-          echo
-
-      - name: Map fields to frontend format
+      - name: Map CSV to products.json
         run: |
           set -e
-          cat > map.js << 'EOF'
+          cat > map_csv.js << 'EOF'
           const fs = require('fs');
 
-          const text = fs.readFileSync('raw_baserow.json','utf8').trim();
+          // --- simple CSV parser (UTF-8, Komma- oder Semikolon-getrennt) ---
+          function parseCSV(text) {
+            // Detect delimiter: if ; appears more than , in header, use ;
+            const firstLine = text.split(/\r?\n/)[0] || '';
+            let delim = ',';
+            const commas = (firstLine.match(/,/g) || []).length;
+            const semis  = (firstLine.match(/;/g) || []).length;
+            if (semis > commas) delim = ';';
 
-          // Prüfen, ob es JSON ist (export liefert JSON / ggf. Array)
-          let data;
-          try {
-            data = JSON.parse(text);
-          } catch(e) {
-            console.error("Die Antwort ist kein JSON (vermutlich HTML der öffentlichen Grid-Seite).");
-            console.error(text.slice(0, 300));
+            const rows = [];
+            let i = 0, field = '', inQuotes = false, row = [];
+            while (i < text.length) {
+              const c = text[i];
+              if (inQuotes) {
+                if (c === '"') {
+                  if (text[i+1] === '"') { field += '"'; i++; } // escaped "
+                  else inQuotes = false;
+                } else field += c;
+              } else {
+                if (c === '"') inQuotes = true;
+                else if (c === '\r') { /* ignore */ }
+                else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+                else if (c === delim) { row.push(field); field = ''; }
+                else field += c;
+              }
+              i++;
+            }
+            // last field/row
+            if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+            return rows;
+          }
+
+          const csv = fs.readFileSync('raw_baserow.csv','utf8').trim();
+          if (!csv) {
+            console.error('CSV leer — liefert der Public-Export Inhalte?');
+            process.exit(1);
+          }
+          const table = parseCSV(csv);
+          if (!table.length) {
+            console.error('CSV konnte nicht geparst werden.');
             process.exit(1);
           }
 
-          const rows = Array.isArray(data) ? data : (data.results || []);
+          const header = table[0].map(h => h.trim());
+          const idx = (name) => header.findIndex(h => h.toLowerCase() === name.toLowerCase());
 
-          const toNum = v => {
-            if (v === null || v === undefined) return 0;
-            const n = Number(String(v).replace(',', '.'));
+          // Deine Spaltennamen:
+          const colArtikelId = header.findIndex(h => /artikel-id/i.test(h));
+          const colBeschreibung = header.findIndex(h => /beschreibung|name/i.test(h));
+          const colBruttopreis = header.findIndex(h => /bruttopreis/i.test(h));
+          const colMwst = header.findIndex(h => /mwst|mwst-satz|mehrwertsteuer/i.test(h));
+
+          function toNum(v) {
+            if (v == null) return 0;
+            const s = String(v).replace(/\./g,'').replace(',','.');
+            const n = Number(s);
             return isNaN(n) ? 0 : n;
-          };
+          }
 
-          const out = rows.map(r => ({
-            id: r['Artikel-ID'] ?? r.id,
-            name: r['Beschreibung'] ?? r['Name'] ?? '',
-            price_gross: toNum(r['Bruttopreis']),
-            vat_rate: toNum(r['MwSt-Satz']),
-          })).filter(x => x.name);
+          const out = [];
+          for (let r = 1; r < table.length; r++) {
+            const row = table[r];
+            if (!row || row.length === 0) continue;
+            const name = (row[colBeschreibung] || '').trim();
+            if (!name) continue;
+            out.push({
+              id: (row[colArtikelId] || '').trim() || String(r),
+              name,
+              price_gross: toNum(row[colBruttopreis]),
+              vat_rate: toNum(row[colMwst]),
+            });
+          }
 
           fs.writeFileSync('products.json', JSON.stringify(out, null, 2));
-          console.log("products.json erzeugt. Anzahl:", out.length);
-          if (!out.length) {
-            console.warn("Hinweis: 0 Artikel. Prüfe Spaltennamen oder ob die View Leerzeilen enthält.");
-          }
+          console.log('products.json erzeugt, Anzahl Artikel:', out.length);
           EOF
 
-          node map.js
+          node map_csv.js
           echo "Preview products.json:"
           head -n 30 products.json || true
 
@@ -107,6 +120,6 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add products.json
-            git commit -m "Update products.json from Baserow"
+            git commit -m "Update products.json from Baserow (CSV)"
             git push
           fi
