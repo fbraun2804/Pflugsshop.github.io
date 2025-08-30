@@ -60,7 +60,6 @@ jobs:
           const toNum = v => {
             if (v === null || v === undefined) return 0;
             const s = String(v).trim();
-            // Tausenderpunkte entfernen, Komma zu Punkt
             const n = Number(s.replace(/\./g,'').replace(',', '.'));
             return isNaN(n) ? 0 : n;
           };
@@ -99,40 +98,20 @@ jobs:
           }
 
           function parseHTMLTable(html) {
-            // erste Tabelle greifen
             const tableMatch = html.match(/<table[\s\S]*?<\/table>/i);
-            if (!tableMatch) return [];
+            if (!tableMatch) return {header:[],rows:[]};
             const table = tableMatch[0];
-
-            // Header
             const ths = [...table.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)].map(m => stripHtml(m[1]));
-            if (!ths.length) {
-              // Alternative: erste Zeile <tr> als Header
-              const firstTr = table.match(/<tr[\s\S]*?<\/tr>/i);
-              if (firstTr) {
-                const altThs = [...firstTr[0].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map(m => stripHtml(m[1]));
-                if (altThs.length) ths.push(...altThs);
-              }
-            }
-
-            // Zeilen
             const trs = [...table.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map(m => m[1]);
-            // erste ist header -> skip
-            const dataTrs = trs.slice(1);
-
-            const rows = [];
-            for (const tr of dataTrs) {
-              const tds = [...tr.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(m => stripHtml(m[1]));
-              if (tds.length) rows.push(tds);
-            }
+            const dataTrs = trs.slice(ths.length ? 1 : 0);
+            const rows = dataTrs.map(tr => [...tr.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(m => stripHtml(m[1]))).filter(r=>r.length);
             return { header: ths, rows };
           }
 
           let out = [];
 
           if (fs.existsSync('raw_baserow.json')) {
-            const txt = fs.readFileSync('raw_baserow.json','utf8').trim();
-            const data = JSON.parse(txt);
+            const data = JSON.parse(fs.readFileSync('raw_baserow.json','utf8'));
             const rows = Array.isArray(data) ? data : (data.results || []);
             out = rows.map(r => ({
               id: r['Artikel-ID'] ?? r.id,
@@ -165,28 +144,24 @@ jobs:
           } else if (fs.existsSync('raw_baserow.html')) {
             const html = fs.readFileSync('raw_baserow.html','utf8');
             const parsed = parseHTMLTable(html);
-            if (!parsed || !parsed.rows || !parsed.rows.length) {
-              console.error('HTML enthielt keine Tabelle mit Daten.');
-            } else {
-              const H = parsed.header.map(h => h.toLowerCase());
-              const find = (re) => H.findIndex(h => re.test(h));
-              const iId   = find(/artikel[- ]?id|id/i);
-              const iName = find(/beschreibung|name/i);
-              const iBrut = find(/bruttopreis|preis/i);
-              const iMwst = find(/mwst|mwst-satz|mehrwertsteuer/i);
+            const H = parsed.header.map(h => h.toLowerCase());
+            const find = (re) => H.findIndex(h => re.test(h));
+            const iId   = find(/artikel[- ]?id|id/i);
+            const iName = find(/beschreibung|name/i);
+            const iBrut = find(/bruttopreis|preis/i);
+            const iMwst = find(/mwst|mwst-satz|mehrwertsteuer/i);
 
-              for (const row of parsed.rows) {
-                const name = (row[iName] || '').trim();
-                if (!name) continue;
-                out.push({
-                  id: (row[iId] || '').trim(),
-                  name,
-                  price_gross: toNum(row[iBrut]),
-                  vat_rate: toNum(row[iMwst]),
-                });
-              }
-              console.log('Quelle: HTML, Artikel:', out.length);
+            for (const row of parsed.rows) {
+              const name = (row[iName] || '').trim();
+              if (!name) continue;
+              out.push({
+                id: (row[iId] || '').trim(),
+                name,
+                price_gross: toNum(row[iBrut]),
+                vat_rate: toNum(row[iMwst]),
+              });
             }
+            console.log('Quelle: HTML, Artikel:', out.length);
           } else {
             console.log('Keine Rohdaten-Datei vorhanden – übersprungen.');
           }
