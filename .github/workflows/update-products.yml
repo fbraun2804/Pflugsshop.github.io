@@ -1,4 +1,4 @@
-name: Update products.json from Baserow (robust)
+name: Update products.json from Baserow (diagnostic-safe)
 
 on:
   schedule:
@@ -15,13 +15,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch Baserow (try JSON export, then CSV)
+      - name: Fetch Baserow public view (try JSON, CSV, HTML)
         run: |
           set -e
           SLUG="uSOIDTc6fT_AkuuyIc-wYUQCgD1XCz0SMM3k8MVQ-OA"
           UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119 Safari/537.36"
 
-          # Kandidaten in Reihenfolge: direkter JSON-Export, CSV-Export, HTML (nur zum Debuggen)
           CANDIDATES=(
             "https://db.pflugsmuehle.de/public/grid/${SLUG}/export/?format=json"
             "https://db.pflugsmuehle.de/public/grid/${SLUG}/export/?format=csv"
@@ -32,25 +31,13 @@ jobs:
           SUCCESS_URL=""
           for URL in "${CANDIDATES[@]}"; do
             echo ">> Versuch: $URL"
-            # -L follow redirects, -s silent, -S show errors, KEIN --fail, damit wir HTTP-Code loggen können
             HTTP_CODE=$(curl -sS -L -A "$UA" -w "%{http_code}" -o raw.tmp "$URL" || true)
             echo "HTTP_CODE=$HTTP_CODE"
-            file raw.tmp || true
             head -c 200 raw.tmp | sed 's/[^[:print:]\t]//g' || true; echo
-
-            if [ "$HTTP_CODE" = "200" ]; then
-              SUCCESS_URL="$URL"
-              break
-            fi
-            echo "----"
+            if [ "$HTTP_CODE" = "200" ]; then SUCCESS_URL="$URL"; break; fi
           done
 
-          if [ -z "$SUCCESS_URL" ]; then
-            echo "Keine URL mit HTTP 200 erreichbar. Bitte prüfe die Public-View-URL manuell."
-            # Trotzdem legen wir eine leere Datei an, damit der nächste Schritt nicht crasht:
-            echo "[]" > raw_baserow.json
-          else
-            # Je nach Format in passende Datei umbenennen
+          if [ -n "$SUCCESS_URL" ]; then
             if echo "$SUCCESS_URL" | grep -qi 'format=json'; then
               mv raw.tmp raw_baserow.json
             elif echo "$SUCCESS_URL" | grep -qi 'format=csv'; then
@@ -59,22 +46,24 @@ jobs:
               mv raw.tmp raw_baserow.html
             fi
             echo "Erfolgreich geladen von: $SUCCESS_URL"
+          else
+            echo "Keine URL mit HTTP 200 erreichbar."
+            mv raw.tmp raw_baserow.fail || true
           fi
 
-      - name: Map to products.json (handles JSON or CSV)
+      - name: Map to products.json (JSON oder CSV)
         run: |
           set -e
-          node - <<'EOF'
+          node - <<'EOF' || true
           const fs = require('fs');
 
-          const toNum = (v) => {
+          const toNum = v => {
             if (v === null || v === undefined) return 0;
-            const n = Number(String(v).replace(/\./g, '').replace(',', '.'));
+            const n = Number(String(v).replace(/\./g,'').replace(',', '.'));
             return isNaN(n) ? 0 : n;
           };
 
           function parseCSV(text) {
-            // sehr einfacher CSV-Parser mit Trenner-Erkennung (, oder ;)
             const headerLine = (text.split(/\r?\n/)[0] || '');
             let delim = ';';
             const commas = (headerLine.match(/,/g) || []).length;
@@ -92,7 +81,7 @@ jobs:
                 } else field += c;
               } else {
                 if (c === '"') inQuotes = true;
-                else if (c === '\r') { /* ignore */ }
+                else if (c === '\r') {}
                 else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
                 else if (c === delim) { row.push(field); field = ''; }
                 else field += c;
@@ -107,19 +96,73 @@ jobs:
 
           if (fs.existsSync('raw_baserow.json')) {
             const txt = fs.readFileSync('raw_baserow.json', 'utf8').trim();
-            if (txt.startsWith('{') || txt.startsWith('[')) {
-              let data;
-              try { data = JSON.parse(txt); }
-              catch(e){ console.error('JSON konnte nicht geparst werden.'); process.exit(1); }
-              const rows = Array.isArray(data) ? data : (data.results || []);
-              out = rows.map(r => ({
-                id: r['Artikel-ID'] ?? r.id,
-                name: r['Beschreibung'] ?? r['Name'] ?? '',
-                price_gross: toNum(r['Bruttopreis']),
-                vat_rate: toNum(r['MwSt-Satz']),
-              })).filter(x => x.name);
-              console.log('Quelle: JSON, Artikel:', out.length);
-            }
+            let data; try { data = JSON.parse(txt); } catch(e){ console.error('JSON parse fail'); process.exit(0); }
+            const rows = Array.isArray(data) ? data : (data.results || []);
+            out = rows.map(r => ({
+              id: r['Artikel-ID'] ?? r.id,
+              name: r['Beschreibung'] ?? r['Name'] ?? '',
+              price_gross: toNum(r['Bruttopreis']),
+              vat_rate: toNum(r['MwSt-Satz']),
+            })).filter(x => x.name);
+            console.log('Quelle: JSON, Artikel:', out.length);
           } else if (fs.existsSync('raw_baserow.csv')) {
-            const csv = fs.readFileSync('raw_baserow.csv','utf8').trim();
+            const csv = fs.readFileSync('raw_baserow.csv', 'utf8').trim();
             const table = parseCSV(csv);
+            if (!table.length) { console.error('CSV leer'); process.exit(0); }
+            const header = table[0].map(h => h.trim());
+            const find = (re) => header.findIndex(h => re.test(h));
+            const iId   = find(/artikel[- ]?id/i);
+            const iName = find(/beschreibung|name/i);
+            const iBrut = find(/bruttopreis/i);
+            const iMwst = find(/mwst|mwst-satz|mehrwertsteuer/i);
+
+            for (let r = 1; r < table.length; r++) {
+              const row = table[r];
+              const name = (row[iName] || '').trim();
+              if (!name) continue;
+              out.push({
+                id: (row[iId] || '').trim() || String(r),
+                name,
+                price_gross: toNum(row[iBrut]),
+                vat_rate: toNum(row[iMwst]),
+              });
+            }
+            console.log('Quelle: CSV, Artikel:', out.length);
+          } else {
+            console.warn('Keine JSON/CSV-Datei vorhanden – Mapping übersprungen.');
+            process.exit(0);
+          }
+
+          if (out.length) {
+            fs.writeFileSync('products.json', JSON.stringify(out, null, 2));
+            console.log('products.json geschrieben.');
+          } else {
+            console.warn('0 Artikel – products.json NICHT überschrieben.');
+          }
+          EOF
+
+      - name: Upload raw artifacts (zum Debuggen)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: baserow-raw
+          path: |
+            raw_baserow.*
+            products.json
+          if-no-files-found: warn
+
+      - name: Commit changes (if any)
+        run: |
+          if [ -f products.json ]; then
+            if git diff --quiet -- products.json; then
+              echo "No changes in products.json"
+            else
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add products.json
+              git commit -m "Update products.json (diagnostic-safe)"
+              git push
+            fi
+          else
+            echo "products.json wurde nicht erzeugt – kein Commit."
+          fi
