@@ -1,1 +1,104 @@
-[]
+[
+  {
+    "id": "1",
+    "name": "<html data-n-head-ssr>",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "2",
+    "name": "<head >",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "3",
+    "name": "<meta data-n-head=ssr charset=utf-8><meta data-n-head=ssr name=viewport content=width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no><title>This page could not be found | Baserow</title><link data-n-head=ssr rel=icon type=image/png href=/img/favicon_16.png sizes=16x16 data-hid=true><link data-n-head=ssr rel=icon type=image/png href=/img/favicon_32.png sizes=32x32 data-hid=true><link data-n-head=ssr rel=icon type=image/png href=/img/favicon_48.png sizes=64x64 data-hid=true><link data-n-head=ssr rel=icon type=image/png href=/img/favicon_192.png sizes=192x192 data-hid=true><link rel=preload href=/_nuxt/843957c.js as=script><link rel=preload href=/_nuxt/517de51.js as=script><link rel=preload href=/_nuxt/30c9463.js as=script><link rel=preload href=/_nuxt/846e320.js as=script><style data-vue-ssr-id=a54eacb0:0 1b4cc39a:0 98528fc6:0>.actions:first-child,.api-docs__table:first-child,.header__filter-item:first-child,.header__undo-redo a:first-child,.heading-1:first-child,.heading-2:first-child,.heading-3:first-child,.heading-4:first-child,.tree__item:first-child,h1:first-child,h2:first-child,h3:first-child,h4:first-child,p:first-child{margin-top:0}.actions:last-child,.api-docs__table:last-child,.header__filter-item:last-child,.header__undo-redo a:last-child,.heading-1:last-child,.heading-2:last-child,.heading-3:last-child,.heading-4:last-child,.tree__item:last-child,h1:last-child,h2:last-child,h3:last-child,h4:last-child,p:last-child{margin-bottom:0}.form-input__input::-moz-placeholder{overflow:hidden",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "4",
+    "name": "* Iconoir",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "5",
+    "name": "* Copyright (c) 2023 Luca Burgio - https://iconoir.com",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "6",
+    "name": "* License - https://github.com/lucaburgio/iconoir/blob/main/LICENSE (Code: MIT License)",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "7",
+    "name": "* CSS file created by Till Esser (@Wiwaltill) and automated by Pascal Jufer (@paescuj)",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "8",
+    "name": "*/.vdp-datepicker.ab-datetime-picker__calendar .vdp-datepicker__calendar .next:before,.vdp-datepicker.ab-datetime-picker__calendar .vdp-datepicker__calendar .prev:before,.vdp-datepicker.datepicker .vdp-datepicker__calendar .next:before,.vdp-datepicker.datepicker .vdp-datepicker__calendar .prev:before,[class*= baserow-icon-]:before,[class*= iconoir-]:before,[class^=baserow-icon-]:before,[class^=iconoir-]:before{background:currentColor",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "10",
+    "name": ".nuxt-progress{background-color:#000",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "11",
+    "name": "</head>",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "12",
+    "name": "<body >",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "13",
+    "name": "<div data-server-rendered=true id=__nuxt><!----><div id=__layout><div class=placeholder><div class=placeholder__logo><a href=/ class=nuxt-link-active><div class=logo><img src=/_nuxt/img/logo.81dc689.svg class=placeholder__logo-image></div></a></div> <h1 class=placeholder__title>This page could not be found</h1> <p class=placeholder__content>",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "14",
+    "name": "The page you are looking for has not been found. This might be because URL is incorrect or that you don’t have permission to view this page.",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "15",
+    "name": "</p> <div class=placeholder__action><a href=/login class=button button--large><i class=button__icon iconoir-nav-arrow-left></i> <span class=button__label>",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "16",
+    "name": "Back to login</span> <!----></a></div></div></div></div><script>window.__NUXT__=(function(a,b,c,d,e,f,g,h,i,j,k,l,m){return {layout:default,data:[],fetch:{},error:{statusCode:404,path:\\u002Fpublic\\u002Fgrid\\u002FuSOIDTc6fT_AkuuyIc-wYUQCgD1XCz0SMM3k8MVQ-OA\\u002Fexport\\u002F?format=csv,message:This page could not be found},state:{i18n:{routeParams:{}},settings:{loaded:a,settings:{}},application:{loading:a,loaded:a,items:[],selected:b},authProvider:{loginOptionsLoaded:a,loginOptions:{}},auth:{refreshing:a,token:b,refreshToken:b,tokenUpdatedAt:c,tokenPayload:b,refreshTokenPayload:b,permissions:[],user:b,signedUserSession:b,authenticated:a,additional:{},webSocketId:b,preventSetToken:a,untrustedClientSessionId:86c4c438-b679-464f-a0f8-e91d93d9670b,userSessionExpired:a,workspaceInvitations:[],umreadUserNotificationCount:c},job:{loaded:a,loading:a,refreshing:a,items:[],updateTimeoutId:b,nextTimeoutInMs:b,remainingPollingAttempts:f,lastUpdateJobIds:[]},workspace:{loaded:a,loading:a,items:[],selected:{},userIdsInSelected:new Set([])},toast:{connecting:a,failedConnecting:a,authorizationError:a,userSessionExpired:a,userPasswordChanged:a,copying:a,pasting:a,clearing:a,undoRedoState:HIDDEN,permissionsUpdated:a,items:[]},undoRedo:{undoing:a,redoing:a,actionScopesStack:[{}]},integration:{},userSource:{},notification:{currentWorkspaceId:b,loading:a,loaded:a,userUnreadCount:c,perWorkspaceUnreadCount:{},anyOtherWorkspaceWithUnread:a,totalCount:c,currentCount:c,items:[]},userSourceUser:{currentApplication:b},routeMounted:{routeComponentMounted:a,currentRoute:b},table:{loading:a,selected:{}},view:{types:{},loading:a,items:[],selected:{},defaultViewId:b},field:{types:{},loading:a,loaded:a,items:[],database:{}},rowModal:{rows:{}},rowModalNavigation:{loading:a,row:b,failedToFetchTableRowId:b},rowHistory:{entries:[],loading:a,loaded:a,totalCount:c,loadedRowId:a,loadedTableId:a},page/view/grid:{multiSelectActive:a,multiSelectHolding:a,multiSelectHeadRowIndex:d,multiSelectHeadFieldIndex:d,multiSelectTailRowIndex:d,multiSelectTailFieldIndex:d,multiSelectStartRowIndex:d,multiSelectStartFieldIndex:d,lastGridId:d,adhocFiltering:a,adhocSorting:a,fieldOptions:{},rows:[],count:c,rowHeight:i,rowsTop:c,rowPadding:j,bufferRequestSize:k,bufferStartIndex:c,bufferLimit:c,rowsStartIndex:c,rowsEndIndex:c,scrollTop:c,windowHeight:c,addRowHover:a,activeSearchTerm:e,hideRowsNotMatchingSearch:g,fieldAggregationData:{},activeGroupBys:[],groupByMetadata:{},pendingFieldOps:{}},page/view/gallery:{delayedRequest:b,visibleRange:{startIndex:c,endIndex:c},requestSize:f,viewId:d,adhocFiltering:a,adhocSorting:a,fetching:a,rows:[],draggingRow:b,draggingOriginalBefore:b,activeSearchTerm:e,fieldOptions:{}},page/view/form:{fieldOptions:{}},page/view/public:{authToken:b,isPublic:a},template/view/grid:{multiSelectActive:a,multiSelectHolding:a,multiSelectHeadRowIndex:d,multiSelectHeadFieldIndex:d,multiSelectTailRowIndex:d,multiSelectTailFieldIndex:d,multiSelectStartRowIndex:d,multiSelectStartFieldIndex:d,lastGridId:d,adhocFiltering:a,adhocSorting:a,fieldOptions:{},rows:[],count:c,rowHeight:i,rowsTop:c,rowPadding:j,bufferRequestSize:k,bufferStartIndex:c,bufferLimit:c,rowsStartIndex:c,rowsEndIndex:c,scrollTop:c,windowHeight:c,addRowHover:a,activeSearchTerm:e,hideRowsNotMatchingSearch:g,fieldAggregationData:{},activeGroupBys:[],groupByMetadata:{},pendingFieldOps:{}},template/view/gallery:{delayedRequest:b,visibleRange:{startIndex:c,endIndex:c},requestSize:f,viewId:d,adhocFiltering:a,adhocSorting:a,fetching:a,rows:[],draggingRow:b,draggingOriginalBefore:b,activeSearchTerm:e,fieldOptions:{}},template/view/form:{fieldOptions:{}},page:{selected:{},deviceTypeSelected:desktop,duplicateJob:b},element:{},domain:{domains:[]},publicBuilder:{},dataSource:{},pageParameter:{},dataSourceContent:{},elementContent:{},theme:{},workflowAction:{},formData:{},dashboardApplication:{dashboardId:b,loading:a,editMode:a,selectedWidgetId:b,widgets:[],dataSources:[],integrations:[],data:{}},template/dashboardApplication:{dashboardId:b,loading:a,editMode:a,selectedWidgetId:b,widgets:[],dataSources:[],integrations:[],data:{}},automationApplication:{automationId:b,loading:a},automationWorkflow:{selected:{},duplicateJob:b},template/automationApplication:{automationId:b,loading:a},row_comments:{comments:[],loading:a,loaded:a,currentCount:c,totalCount:c,loadedRowId:a,loadedTableId:a,nextTemporaryCommentId:d},page/view/kanban:{lastKanbanId:d,singleSelectFieldId:d,stacks:{},fieldOptions:{},bufferRequestSize:l,draggingRow:b,draggingOriginalStackId:b,draggingOriginalBefore:b,adhocFiltering:a},page/view/calendar:{loading:a,loadingRows:a,lastCalendarId:b,dateFieldId:b,fieldOptions:{},dateStacks:{},bufferRequestSize:m,selectedDate:b,activeSearchTerm:e,hideRowsNotMatchingSearch:g,adhocFiltering:a},page/view/timeline:{delayedRequest:b,visibleRange:{startIndex:c,endIndex:c},requestSize:f,viewId:d,adhocFiltering:a,adhocSorting:a,fetching:a,rows:[],draggingRow:b,draggingOriginalBefore:b,activeSearchTerm:e,fieldOptions:{}},template/view/kanban:{lastKanbanId:d,singleSelectFieldId:d,stacks:{},fieldOptions:{},bufferRequestSize:l,draggingRow:b,draggingOriginalStackId:b,draggingOriginalBefore:b,adhocFiltering:a},template/view/calendar:{loading:a,loadingRows:a,lastCalendarId:b,dateFieldId:b,fieldOptions:{},dateStacks:{},bufferRequestSize:m,selectedDate:b,activeSearchTerm:e,hideRowsNotMatchingSearch:g,adhocFiltering:a},template/view/timeline:{delayedRequest:b,visibleRange:{startIndex:c,endIndex:c},requestSize:f,viewId:d,adhocFiltering:a,adhocSorting:a,fetching:a,rows:[],draggingRow:b,draggingOriginalBefore:b,activeSearchTerm:e,fieldOptions:{}},impersonating:{impersonating:a},authProviderAdmin:{items:{},nextProviderId:b}},serverRendered:g,routePath:\\u002Fpublic\\u002Fgrid\\u002FuSOIDTc6fT_AkuuyIc-wYUQCgD1XCz0SMM3k8MVQ-OA\\u002Fexport\\u002F,config:{sentry:{config:{dsn:e,environment:e}},BASEROW_DISABLE_PUBLIC_URL_CHECK:a,PUBLIC_BACKEND_URL:h,PUBLIC_WEB_FRONTEND_URL:h,MEDIA_URL:http:\\u002F\\u002Flocalhost:4000\\u002Fmedia\\u002F,INITIAL_TABLE_DATA_LIMIT:b,DOWNLOAD_FILE_VIA_XHR:0,HOURS_UNTIL_TRASH_PERMANENTLY_DELETED:72,DISABLE_ANONYMOUS_PUBLIC_VIEW_WS_CONNECTIONS:e,BASEROW_MAX_IMPORT_FILE_SIZE_MB:512,FEATURE_FLAGS:e,BASEROW_DISABLE_GOOGLE_DOCS_FILE_PREVIEW:e,BASEROW_MAX_SNAPSHOTS_PER_GROUP:d,BASEROW_FRONTEND_JOBS_POLLING_TIMEOUT_MS:2000,BASEROW_USE_PG_FULLTEXT_SEARCH:true,POSTHOG_PROJECT_API_KEY:e,POSTHOG_HOST:e,BASEROW_UNIQUE_ROW_VALUES_SIZE_LIMIT:f,BASEROW_ROW_PAGE_SIZE_LIMIT:200,BASEROW_BUILDER_DOMAINS:[],BASEROW_FRONTEND_SAME_SITE_COOKIE:lax,BASEROW_DISABLE_SUPPORT:e,BASEROW_EMBEDDED_SHARE_URL:h,BASEROW_PREMIUM_GROUPED_AGGREGATE_SERVICE_MAX_SERIES:3,BASEROW_PRICING_URL:https:\\u002F\\u002Fbaserow.io\\u002Fpricing?version=self-hosted},isWebFrontendHostname:g,globalRefs:{}}}(false,null,0,-1,,100,true,https:\\u002F\\u002Fdb.pflugsmuehle.de,33,16,40,24,10))",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "17",
+    "name": "</body>",
+    "price_gross": 0,
+    "vat_rate": 0
+  },
+  {
+    "id": "18",
+    "name": "</html>",
+    "price_gross": 0,
+    "vat_rate": 0
+  }
+]
