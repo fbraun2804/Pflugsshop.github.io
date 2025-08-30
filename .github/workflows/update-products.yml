@@ -1,8 +1,8 @@
-name: Update products.json from Baserow (angepasst)
+name: Update products.json from Baserow (robust-safe)
 
 on:
   schedule:
-    - cron: "0 * * * *"   # stündlich
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -22,13 +22,17 @@ jobs:
           URL="https://db.pflugsmuehle.de/public/grid/${SLUG}/export/?format=csv"
           echo "Fetching: $URL"
           curl -sSL -o raw_baserow.csv "$URL"
-          head -n 5 raw_baserow.csv || true
+          echo "CSV Kopf (20 Zeilen):"
+          head -n 20 raw_baserow.csv || true
 
-      - name: Map CSV -> products.json (genau deine Spalten)
+      - name: Map CSV -> products.new.json (normalize + heuristics, NO overwrite on 0 items)
         run: |
           set -e
           node - <<'EOF'
           const fs = require('fs');
+
+          const csv = fs.readFileSync('raw_baserow.csv','utf8');
+          if (!csv.trim()) { console.error('CSV leer'); fs.writeFileSync('count.txt','0'); process.exit(0); }
 
           function parseCSV(text) {
             const first = (text.split(/\r?\n/)[0]||'');
@@ -53,49 +57,136 @@ jobs:
             return rows;
           }
 
-          function toNum(v){
-            if(v==null) return 0;
-            const s = String(v).trim().replace(/\./g,'').replace(',','.');
-            const n = Number(s);
-            return isNaN(n) ? 0 : n;
-          }
-
-          const csv = fs.readFileSync('raw_baserow.csv','utf8').trim();
           const table = parseCSV(csv);
-          const header = table[0].map(h=>h.trim());
+          if (!table.length) { console.error('CSV nicht parsebar'); fs.writeFileSync('count.txt','0'); process.exit(0); }
 
-          // Exakt deine Spalten
-          const iId   = header.indexOf('ID');
-          const iName = header.indexOf('Name');
-          const iBrut = header.indexOf('Bruttopreis');
-          const iMwst = header.indexOf('MwSt-Satz');
+          // Header normalisieren: Trim, NBSP->Space, alle Arten Bindestrich -> '-', mehrfaches Leerzeichen -> eins, lower-case
+          const normalize = s => String(s||'')
+            .replace(/\u00A0/g,' ')           // NBSP -> Space
+            .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g,'-') // div. Dashes -> '-'
+            .replace(/\s+/g,' ')
+            .trim()
+            .toLowerCase();
 
-          const out=[];
-          for(let r=1;r<table.length;r++){
-            const row = table[r];
-            if(!row || !row.length) continue;
-            const name = (row[iName]||'').toString().trim();
-            if(!name) continue;
-            out.push({
-              id: (row[iId]||'').toString().trim() || String(r),
-              name,
-              price_gross: toNum(row[iBrut]),
-              vat_rate: toNum(row[iMwst]),
-            });
+          const headerRaw = table[0].map(h=>String(h||'').trim());
+          const header = headerRaw.map(normalize);
+          console.log('Header erkannt:', headerRaw);
+
+          // Direkt nach deinen Spalten suchen
+          let iId   = header.indexOf('id');
+          let iName = header.indexOf('name');
+          let iBrut = header.indexOf('bruttopreis');
+          let iMwst = header.indexOf('mwst-satz');
+
+          // Falls nicht gefunden: alternative Keys/Heuristik
+          const find = (...keys) => {
+            for (const k of keys) {
+              const i = header.indexOf(normalize(k));
+              if (i >= 0) return i;
+            }
+            return -1;
+          };
+
+          if (iName < 0) iName = find('beschreibung','artikel','produkt','bezeichnung');
+          if (iBrut < 0) iBrut = find('preis', 'preis brutto', 'brutto preis', 'gesamtpreis');
+          if (iMwst < 0) iMwst = find('mwst', 'mehrwertsteuer', 'steuer', 'mwst (%)');
+
+          // Heuristiken (falls weiterhin -1):
+          const toNum = v => {
+            if (v==null) return 0;
+            const s = String(v).trim().replace(/\./g,'').replace(',','.');
+            const n = Number(s); return isNaN(n)?0:n;
+          };
+
+          // Name: Spalte mit am meisten Buchstaben (ohne viele Ziffern)
+          if (iName < 0) {
+            let best=-1, scoreBest=-1;
+            for (let c=0;c<header.length;c++){
+              let score=0;
+              for (let r=1;r<Math.min(table.length, 30); r++){
+                const val = (table[r][c]||'').toString().trim();
+                if (!val) continue;
+                if ((val.match(/\d/g)||[]).length > val.length/2) continue;
+                score += val.length;
+              }
+              if (score>scoreBest){scoreBest=score; best=c;}
+            }
+            iName = best >= 0 ? best : 0;
           }
 
-          fs.writeFileSync('products.json', JSON.stringify(out, null, 2));
-          console.log('Geschrieben: products.json (Artikel:', out.length, ')');
+          // Preis: erste Spalte mit plausiblen >0 Werten (nicht reine IDs)
+          if (iBrut < 0) {
+            outer: for (let c=0;c<header.length;c++){
+              let hits=0;
+              for (let r=1;r<Math.min(table.length, 50); r++){
+                const n = toNum(table[r][c]);
+                if (n>0 && n<100000) { hits++; if (hits>=2){ iBrut=c; break outer; } }
+              }
+            }
+            if (iBrut < 0) iBrut = 0;
+          }
+
+          // MwSt: Spalte mit Werten 7/19/… <= 30
+          if (iMwst < 0) {
+            outer2: for (let c=0;c<header.length;c++){
+              for (let r=1;r<Math.min(table.length, 50); r++){
+                const n = toNum(table[r][c]);
+                if (n>0 && n<=30) { iMwst=c; break outer2; }
+              }
+            }
+          }
+
+          console.log('Gewählte Spalten-Indices:', { iId, iName, iBrut, iMwst });
+
+          const out = [];
+          for (let r=1; r<table.length; r++){
+            const row = table[r];
+            if (!row || !row.length) continue;
+            const name = (row[iName]||'').toString().trim();
+            if (!name) continue;
+            const id = iId>=0 ? (row[iId]||'').toString().trim() : String(r);
+            const price = toNum(row[iBrut]);
+            const vat = iMwst>=0 ? toNum(row[iMwst]) : 0;
+            out.push({ id, name, price_gross: price, vat_rate: vat });
+          }
+
+          console.log('Artikel gefunden:', out.length);
+          if (out.length > 0) {
+            fs.writeFileSync('products.new.json', JSON.stringify(out, null, 2));
+            fs.writeFileSync('count.txt', String(out.length));
+            console.log('products.new.json geschrieben.');
+          } else {
+            fs.writeFileSync('count.txt','0');
+            console.warn('0 Artikel — bestehende products.json bleibt unverändert.');
+          }
           EOF
 
-      - name: Commit changes (if any)
+      - name: Upload raw artifacts (debug)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: baserow-raw
+          path: |
+            raw_baserow.csv
+            products.new.json
+            count.txt
+          if-no-files-found: warn
+
+      - name: Commit changes ONLY if we found items
         run: |
-          if git diff --quiet -- products.json; then
-            echo "No changes in products.json"
+          COUNT=$(cat count.txt 2>/dev/null || echo "0")
+          echo "Gefundene Artikel: $COUNT"
+          if [ "$COUNT" -gt 0 ]; then
+            mv -f products.new.json products.json
+            if git diff --quiet -- products.json; then
+              echo "No changes in products.json"
+            else
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add products.json
+              git commit -m "Update products.json aus Baserow (robust-safe) – $COUNT Artikel"
+              git push
+            fi
           else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add products.json
-            git commit -m "Update products.json aus Baserow (angepasst auf Spalten)"
-            git push
+            echo "0 Artikel – products.json NICHT überschrieben."
           fi
