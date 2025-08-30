@@ -1,0 +1,63 @@
+name: Update products.json from Baserow
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # stündlich
+  workflow_dispatch:      # manuell startbar
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch Baserow public view (JSON export)
+        run: |
+          curl -fsSL \
+            "https://db.pflugsmuehle.de/public/grid/uSOIDTc6fT_AkuuyIc-wYUQCgD1XCz0SMM3k8MVQ-OA/export/?format=json" \
+            -o raw_baserow.json
+
+      - name: Map fields to frontend format
+        run: |
+          cat > map.js << 'EOF'
+          const fs = require('fs');
+          const raw = JSON.parse(fs.readFileSync('raw_baserow.json','utf8'));
+          const rows = Array.isArray(raw) ? raw : (raw.results || []);
+
+          const toNum = v => {
+            if (v === null || v === undefined) return 0;
+            const n = Number(String(v).replace(',', '.'));
+            return isNaN(n) ? 0 : n;
+          };
+
+          // Spalten aus deiner Baserow-Tabelle:
+          // "Artikel-ID", "Beschreibung" (oder "Name"), "Bruttopreis", "MwSt-Satz"
+          const out = rows.map(r => ({
+            id: r['Artikel-ID'] ?? r.id,
+            name: r['Beschreibung'] ?? r['Name'] ?? '',
+            price_gross: toNum(r['Bruttopreis']),
+            vat_rate: toNum(r['MwSt-Satz']),
+          })).filter(x => x.name);
+
+          fs.writeFileSync('products.json', JSON.stringify(out, null, 2));
+          EOF
+
+          node map.js
+          echo "Preview products.json:"
+          head -n 30 products.json || true
+
+      - name: Commit changes (if any)
+        run: |
+          if git diff --quiet -- products.json; then
+            echo "No changes in products.json"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add products.json
+            git commit -m "Update products.json from Baserow"
+            git push
+          fi
