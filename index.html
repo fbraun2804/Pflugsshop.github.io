@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini‑Shop (Minimaltest)</title>
+  <style>body{font:16px system-ui;max-width:750px;margin:24px auto;padding:0 16px}</style>
+</head>
+<body>
+  <h1>Mini‑Shop (Minimaltest)</h1>
+  <p>Quelle: <code>./products.json</code></p>
+  <ul id="list"></ul>
+  <script>
+    async function run(){
+      try{
+        const res = await fetch('./products.json',{cache:'no-store'});
+        const data = await res.json();
+        const list = document.getElementById('list');
+        list.innerHTML = '';
+        data.forEach(p=>{
+          const li = document.createElement('li');
+          li.textContent = (p.name||p.id) + ' — ' + (p.price_gross||0) + ' €';
+          list.appendChild(li);
+        });
+      }catch(e){
+        document.body.insertAdjacentHTML('beforeend','<pre style="color:#b00">'+(e.message||e)+'</pre>');
+      }
+    }
+    run();
+  </script>
+</body>
+</html>
