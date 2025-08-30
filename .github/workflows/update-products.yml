@@ -1,4 +1,4 @@
-name: Update products.json from Baserow (with HTML fallback)
+name: Update products.json from Baserow (angepasst)
 
 on:
   schedule:
@@ -15,187 +15,87 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch Baserow public view (try JSON, CSV, then HTML)
+      - name: Fetch public CSV export from Baserow
         run: |
           set -e
           SLUG="uSOIDTc6fT_AkuuyIc-wYUQCgD1XCz0SMM3k8MVQ-OA"
-          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119 Safari/537.36"
+          URL="https://db.pflugsmuehle.de/public/grid/${SLUG}/export/?format=csv"
+          echo "Fetching: $URL"
+          curl -sSL -o raw_baserow.csv "$URL"
+          head -n 5 raw_baserow.csv || true
 
-          CANDIDATES=(
-            "https://db.pflugsmuehle.de/public/grid/${SLUG}/export/?format=json"
-            "https://db.pflugsmuehle.de/public/grid/${SLUG}/export/?format=csv"
-            "https://db.pflugsmuehle.de/public/grid/${SLUG}"
-          )
-
-          rm -f raw_baserow.*
-          SUCCESS_URL=""
-          for URL in "${CANDIDATES[@]}"; do
-            echo ">> Versuch: $URL"
-            HTTP_CODE=$(curl -sS -L -A "$UA" -w "%{http_code}" -o raw.tmp "$URL" || true)
-            echo "HTTP_CODE=$HTTP_CODE"
-            head -c 200 raw.tmp | sed 's/[^[:print:]\t]//g' || true; echo
-            if [ "$HTTP_CODE" = "200" ]; then SUCCESS_URL="$URL"; break; fi
-          done
-
-          if [ -n "$SUCCESS_URL" ]; then
-            if echo "$SUCCESS_URL" | grep -qi 'format=json'; then
-              mv raw.tmp raw_baserow.json
-            elif echo "$SUCCESS_URL" | grep -qi 'format=csv'; then
-              mv raw.tmp raw_baserow.csv
-            else
-              mv raw.tmp raw_baserow.html
-            fi
-            echo "Erfolgreich geladen von: $SUCCESS_URL"
-          else
-            echo "Keine URL mit HTTP 200 erreichbar."
-            mv raw.tmp raw_baserow.fail || true
-          fi
-
-      - name: Map to products.json (JSON, CSV oder HTML)
+      - name: Map CSV -> products.json (genau deine Spalten)
         run: |
           set -e
           node - <<'EOF'
           const fs = require('fs');
 
-          const toNum = v => {
-            if (v === null || v === undefined) return 0;
-            const s = String(v).trim();
-            const n = Number(s.replace(/\./g,'').replace(',', '.'));
-            return isNaN(n) ? 0 : n;
-          };
-
           function parseCSV(text) {
-            const headerLine = (text.split(/\r?\n/)[0] || '');
-            let delim = ';';
-            const commas = (headerLine.match(/,/g) || []).length;
-            const semis  = (headerLine.match(/;/g) || []).length;
-            if (commas > semis) delim = ',';
-
-            const rows = [];
-            let i = 0, field = '', inQuotes = false, row = [];
-            while (i < text.length) {
-              const c = text[i];
-              if (inQuotes) {
-                if (c === '"') {
-                  if (text[i+1] === '"') { field += '"'; i++; }
-                  else inQuotes = false;
-                } else field += c;
-              } else {
-                if (c === '"') inQuotes = true;
-                else if (c === '\r') {}
-                else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
-                else if (c === delim) { row.push(field); field = ''; }
-                else field += c;
+            const first = (text.split(/\r?\n/)[0]||'');
+            let d = ';'; const c = (first.match(/,/g)||[]).length; const s = (first.match(/;/g)||[]).length;
+            if (c > s) d = ',';
+            const rows=[]; let f='', q=false, r=[];
+            for (let i=0;i<text.length;i++){
+              const ch=text[i];
+              if(q){
+                if(ch === '"'){
+                  if(text[i+1] === '"'){ f+='"'; i++; } else { q=false; }
+                } else f+=ch;
+              }else{
+                if(ch === '"') q=true;
+                else if(ch === d){ r.push(f); f=''; }
+                else if(ch === '\r'){ }
+                else if(ch === '\n'){ r.push(f); rows.push(r); r=[]; f=''; }
+                else f+=ch;
               }
-              i++;
             }
-            if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+            if(f.length || r.length){ r.push(f); rows.push(r); }
             return rows;
           }
 
-          function stripHtml(s) {
-            return String(s||'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
+          function toNum(v){
+            if(v==null) return 0;
+            const s = String(v).trim().replace(/\./g,'').replace(',','.');
+            const n = Number(s);
+            return isNaN(n) ? 0 : n;
           }
 
-          function parseHTMLTable(html) {
-            const tableMatch = html.match(/<table[\s\S]*?<\/table>/i);
-            if (!tableMatch) return {header:[],rows:[]};
-            const table = tableMatch[0];
-            const ths = [...table.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)].map(m => stripHtml(m[1]));
-            const trs = [...table.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map(m => m[1]);
-            const dataTrs = trs.slice(ths.length ? 1 : 0);
-            const rows = dataTrs.map(tr => [...tr.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(m => stripHtml(m[1]))).filter(r=>r.length);
-            return { header: ths, rows };
+          const csv = fs.readFileSync('raw_baserow.csv','utf8').trim();
+          const table = parseCSV(csv);
+          const header = table[0].map(h=>h.trim());
+
+          // Exakt deine Spalten
+          const iId   = header.indexOf('ID');
+          const iName = header.indexOf('Name');
+          const iBrut = header.indexOf('Bruttopreis');
+          const iMwst = header.indexOf('MwSt-Satz');
+
+          const out=[];
+          for(let r=1;r<table.length;r++){
+            const row = table[r];
+            if(!row || !row.length) continue;
+            const name = (row[iName]||'').toString().trim();
+            if(!name) continue;
+            out.push({
+              id: (row[iId]||'').toString().trim() || String(r),
+              name,
+              price_gross: toNum(row[iBrut]),
+              vat_rate: toNum(row[iMwst]),
+            });
           }
 
-          let out = [];
-
-          if (fs.existsSync('raw_baserow.json')) {
-            const data = JSON.parse(fs.readFileSync('raw_baserow.json','utf8'));
-            const rows = Array.isArray(data) ? data : (data.results || []);
-            out = rows.map(r => ({
-              id: r['Artikel-ID'] ?? r.id,
-              name: r['Beschreibung'] ?? r['Name'] ?? '',
-              price_gross: toNum(r['Bruttopreis']),
-              vat_rate: toNum(r['MwSt-Satz']),
-            })).filter(x => x.name);
-            console.log('Quelle: JSON, Artikel:', out.length);
-          } else if (fs.existsSync('raw_baserow.csv')) {
-            const csv = fs.readFileSync('raw_baserow.csv','utf8').trim();
-            const table = parseCSV(csv);
-            const header = table[0].map(h => h.trim());
-            const find = (re) => header.findIndex(h => re.test(h));
-            const iId   = find(/artikel[- ]?id/i);
-            const iName = find(/beschreibung|name/i);
-            const iBrut = find(/bruttopreis/i);
-            const iMwst = find(/mwst|mwst-satz|mehrwertsteuer/i);
-            for (let r = 1; r < table.length; r++) {
-              const row = table[r];
-              const name = (row[iName] || '').trim();
-              if (!name) continue;
-              out.push({
-                id: (row[iId] || '').trim() || String(r),
-                name,
-                price_gross: toNum(row[iBrut]),
-                vat_rate: toNum(row[iMwst]),
-              });
-            }
-            console.log('Quelle: CSV, Artikel:', out.length);
-          } else if (fs.existsSync('raw_baserow.html')) {
-            const html = fs.readFileSync('raw_baserow.html','utf8');
-            const parsed = parseHTMLTable(html);
-            const H = parsed.header.map(h => h.toLowerCase());
-            const find = (re) => H.findIndex(h => re.test(h));
-            const iId   = find(/artikel[- ]?id|id/i);
-            const iName = find(/beschreibung|name/i);
-            const iBrut = find(/bruttopreis|preis/i);
-            const iMwst = find(/mwst|mwst-satz|mehrwertsteuer/i);
-
-            for (const row of parsed.rows) {
-              const name = (row[iName] || '').trim();
-              if (!name) continue;
-              out.push({
-                id: (row[iId] || '').trim(),
-                name,
-                price_gross: toNum(row[iBrut]),
-                vat_rate: toNum(row[iMwst]),
-              });
-            }
-            console.log('Quelle: HTML, Artikel:', out.length);
-          } else {
-            console.log('Keine Rohdaten-Datei vorhanden – übersprungen.');
-          }
-
-          if (out.length) {
-            fs.writeFileSync('products.json', JSON.stringify(out, null, 2));
-            console.log('products.json geschrieben.');
-          } else {
-            console.log('0 Artikel – products.json nicht verändert.');
-          }
+          fs.writeFileSync('products.json', JSON.stringify(out, null, 2));
+          console.log('Geschrieben: products.json (Artikel:', out.length, ')');
           EOF
-
-      - name: Upload raw artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: baserow-raw
-          path: |
-            raw_baserow.*
-            products.json
-          if-no-files-found: warn
 
       - name: Commit changes (if any)
         run: |
-          if [ -f products.json ]; then
-            if git diff --quiet -- products.json; then
-              echo "No changes in products.json"
-            else
-              git config user.name "github-actions[bot]"
-              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-              git add products.json
-              git commit -m "Update products.json (HTML fallback)"
-              git push
-            fi
+          if git diff --quiet -- products.json; then
+            echo "No changes in products.json"
           else
-            echo "products.json wurde nicht erzeugt – kein Commit."
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add products.json
+            git commit -m "Update products.json aus Baserow (angepasst auf Spalten)"
+            git push
           fi
