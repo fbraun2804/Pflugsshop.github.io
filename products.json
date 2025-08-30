@@ -1,0 +1,4 @@
+[
+  { "id": "Cola",   "name": "Cola 0,5l", "price_gross": 4.2, "vat_rate": 19 },
+  { "id": "Semmel", "name": "Semmel",    "price_gross": 3.5, "vat_rate": 7 }
+]
