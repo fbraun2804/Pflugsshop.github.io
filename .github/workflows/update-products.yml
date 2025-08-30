@@ -15,18 +15,65 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch Baserow public view (JSON export)
+      - name: Try fetching Baserow public view (robust)
         run: |
-          curl -fsSL \
-            "https://db.pflugsmuehle.de/public/grid/uSOIDTc6fT_AkuuyIc-wYUQCgD1XCz0SMM3k8MVQ-OA/export/?format=json" \
-            -o raw_baserow.json
+          set -e
+          SLUG="uSOIDTc6fT_AkuuyIc-wYUQCgD1XCz0SMM3k8MVQ-OA"
+
+          # Kandidaten-URLs (wir probieren, bis eine 200 liefert)
+          CANDIDATES=(
+            "https://db.pflugsmuehle.de/public/grid/${SLUG}/export/?format=json"
+            "https://db.pflugsmuehle.de/api/public/grid/${SLUG}/?page=1&size=200&user_field_names=true"
+            "https://db.pflugsmuehle.de/public/grid/${SLUG}"  # Fallback: HTML (nur zum Debuggen)
+          )
+
+          STATUS=0
+          SUCCESS_URL=""
+          for URL in "${CANDIDATES[@]}"; do
+            echo ">> Versuch: $URL"
+            # Wir folgen Weiterleitungen (-L), zeigen Fehler (-S), schreiben Header/Status
+            HTTP_CODE=$(curl -sS -L -w "%{http_code}" -o raw_baserow.json "$URL" || true)
+            echo "HTTP_CODE=$HTTP_CODE"
+            # Wenn 200, stoppen
+            if [ "$HTTP_CODE" = "200" ]; then
+              SUCCESS_URL="$URL"
+              break
+            fi
+            # Zum Debug: ersten 300 Zeichen ausgeben
+            echo "Antwort-Auszug:"
+            head -c 300 raw_baserow.json || true
+            echo; echo "----"
+          done
+
+          if [ -z "$SUCCESS_URL" ]; then
+            echo "Keine der Kandidaten-URLs lieferte 200. Abbruch."
+            exit 1
+          fi
+
+          echo "Erfolgreich geladen von: $SUCCESS_URL"
+          echo "Erste 200 Zeichen:"
+          head -c 200 raw_baserow.json || true
+          echo
 
       - name: Map fields to frontend format
         run: |
+          set -e
           cat > map.js << 'EOF'
           const fs = require('fs');
-          const raw = JSON.parse(fs.readFileSync('raw_baserow.json','utf8'));
-          const rows = Array.isArray(raw) ? raw : (raw.results || []);
+
+          const text = fs.readFileSync('raw_baserow.json','utf8').trim();
+
+          // Prüfen, ob es JSON ist (export liefert JSON / ggf. Array)
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch(e) {
+            console.error("Die Antwort ist kein JSON (vermutlich HTML der öffentlichen Grid-Seite).");
+            console.error(text.slice(0, 300));
+            process.exit(1);
+          }
+
+          const rows = Array.isArray(data) ? data : (data.results || []);
 
           const toNum = v => {
             if (v === null || v === undefined) return 0;
@@ -34,8 +81,6 @@ jobs:
             return isNaN(n) ? 0 : n;
           };
 
-          // Spalten aus deiner Baserow-Tabelle:
-          // "Artikel-ID", "Beschreibung" (oder "Name"), "Bruttopreis", "MwSt-Satz"
           const out = rows.map(r => ({
             id: r['Artikel-ID'] ?? r.id,
             name: r['Beschreibung'] ?? r['Name'] ?? '',
@@ -44,6 +89,10 @@ jobs:
           })).filter(x => x.name);
 
           fs.writeFileSync('products.json', JSON.stringify(out, null, 2));
+          console.log("products.json erzeugt. Anzahl:", out.length);
+          if (!out.length) {
+            console.warn("Hinweis: 0 Artikel. Prüfe Spaltennamen oder ob die View Leerzeilen enthält.");
+          }
           EOF
 
           node map.js
