@@ -28,6 +28,7 @@
     .muted { color: var(--muted); font-size: 0.9em; }
     .danger { color: #b00020; }
 
+    /* Formularelemente einheitlich & mobil-optimiert */
     select, input, textarea {
       width: 100%;
       max-width: var(--field-max);
@@ -41,8 +42,9 @@
       -moz-appearance: none;
       appearance: none;
       background-color: #fff;
-      font-size: 16px;
+      font-size: 16px; /* iOS: verhindert Zoom beim Fokus */
     }
+    /* Kleines ▼-Icon im Select */
     select {
       background:
         white
@@ -51,6 +53,7 @@
       padding-right: 2rem;
     }
 
+    /* Mengensteuerung (−  [Anzahl]  +) */
     .qty { display: inline-flex; align-items: center; gap: 0.4rem; }
     .qty .num {
       min-width: 2.2em; text-align: center; font-weight: 600;
@@ -58,6 +61,7 @@
       border-radius: 8px; background: #fff;
     }
 
+    /* Warenkorb-Zeile */
     .cart-row { display: grid; grid-template-columns: auto 1fr auto auto; gap: .6rem; align-items: center; padding: .4rem 0; }
     .cart-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cart-remove { background: #fff; color: #c62828; border: 1px solid #ef9a9a; }
@@ -68,6 +72,13 @@
       .cart-row .sum { justify-self: end; }
     }
   </style>
+
+  <script>
+    // <- HIER ist deine Worker-URL eingetragen
+    window.CONFIG = {
+      ENDPOINT_URL: "https://wild-cloud-edf6.f-braun.workers.dev"
+    };
+  </script>
 </head>
 <body>
 <h1>Mini-Webshop</h1>
@@ -125,7 +136,7 @@ fetch("./zimmer.json")
     });
   });
 
-// Cart-Funktionen
+// Helpers
 function inCart(id){ return cart.find(i=>i.id==id); }
 function addToCart(p, delta=1){
   const ex = inCart(p.id);
@@ -149,15 +160,17 @@ function totals(){
     return s+(base-(base/(1+rate)))*i.qty;
   },0);
   const net=gross-vatSum;
-  return {net,vatSum,gross};
+  return {items: cart.slice(), net, vatSum, gross};
 }
 
 function render(){
+  // Produktliste
   const list=document.getElementById('products');
   list.innerHTML='';
   products.forEach(p=>{
     const card=document.createElement('div');
     card.className='card';
+
     const title=document.createElement('div');
     title.className='row space';
     const name=document.createElement('div');
@@ -167,18 +180,22 @@ function render(){
     price.textContent=fmt(p.price_gross)+" €";
     title.appendChild(name);
     title.appendChild(price);
+
     const spacer=document.createElement('div');
     spacer.style.height="0.8rem";
+
     const btn=document.createElement('button');
     btn.className='btn';
     btn.textContent='Hinzufügen';
     btn.onclick=()=>addToCart(p, 1);
+
     card.appendChild(title);
     card.appendChild(spacer);
     card.appendChild(btn);
     list.appendChild(card);
   });
 
+  // Warenkorb
   const cartEl=document.getElementById('cart');
   cartEl.innerHTML='';
   if(cart.length===0){
@@ -190,17 +207,22 @@ function render(){
   cart.forEach(i=>{
     const row=document.createElement('div');
     row.className='cart-row';
+
     const remove=document.createElement('button');
     remove.className='btn square cart-remove';
+    remove.setAttribute('aria-label','Entfernen');
     remove.textContent='✕';
     remove.onclick=()=>{ cart = cart.filter(a=>a.id!==i.id); render(); };
+
     const nm=document.createElement('div');
     nm.className='name';
     nm.textContent=i.name;
+
     const qtyWrap = document.createElement('div');
     qtyWrap.className='qty';
     const minus = document.createElement('button');
     minus.className='btn ghost square';
+    minus.setAttribute('aria-label','Menge verringern');
     minus.textContent='−';
     minus.onclick=()=>setQty(i.id, i.qty-1);
     const num = document.createElement('div');
@@ -208,20 +230,24 @@ function render(){
     num.textContent = i.qty;
     const plus = document.createElement('button');
     plus.className='btn ghost square';
+    plus.setAttribute('aria-label','Menge erhöhen');
     plus.textContent='+';
     plus.onclick=()=>setQty(i.id, i.qty+1);
     qtyWrap.appendChild(minus);
     qtyWrap.appendChild(num);
     qtyWrap.appendChild(plus);
+
     const sum=document.createElement('div');
     sum.className='sum';
     sum.textContent = fmt(i.qty*i.price_gross)+" €";
+
     row.appendChild(remove);
     row.appendChild(nm);
     row.appendChild(qtyWrap);
     row.appendChild(sum);
     cartEl.appendChild(row);
   });
+
   const t=totals();
   document.getElementById('t-net').textContent=fmt(t.net)+" €";
   document.getElementById('t-vat').textContent=fmt(t.vatSum)+" €";
@@ -229,39 +255,78 @@ function render(){
 }
 
 // Submit
-document.getElementById('submit').addEventListener('click',()=>{
+document.getElementById('submit').addEventListener('click', async ()=>{
   const name=document.getElementById('c-name').value.trim();
   const email=document.getElementById('c-email').value.trim();
   const room=document.getElementById('c-room').value;
   const notes=document.getElementById('c-notes').value.trim();
   const pay=document.getElementById('c-pay').value;
   const msg=document.getElementById('msg');
-  if(!cart.length){
+
+  const t=totals();
+  if(!t.items.length){
     msg.textContent="Bitte mindestens einen Artikel wählen."; msg.className="muted danger"; return;
   }
-  const lines=cart.map(i=>`- ${i.qty}× ${i.name} (${fmt(i.price_gross)} €)`).join('%0D%0A');
-  const t=totals();
-  const body=[
-    `Name: ${encodeURIComponent(name)}`,
-    `E-Mail: ${encodeURIComponent(email)}`,
-    `Zimmer: ${encodeURIComponent(room)}`,
-    `Hinweise: ${encodeURIComponent(notes)}`,
-    `Zahlart: ${encodeURIComponent(pay)}`,
-    '', 'Positionen:', lines,
-    '', `Netto: ${fmt(t.net)} €`,
-    `MwSt.: ${fmt(t.vatSum)} €`,
-    `Brutto: ${fmt(t.gross)} €`
-  ].join('%0D%0A');
 
-  // Empfänger: erst Kunde, dann Hotelshop
-  const recipients = [];
-  if(email) recipients.push(email);
-  recipients.push("hotelshop@pflugsmuehle.de");
+  // Fall A: Bar/Zimmerrechnung -> E-Mail-Entwurf (Kunde zuerst, dann Hotelshop)
+  if (pay==='Bar' || pay==='Zimmerrechnung') {
+    const lines=t.items.map(i=>`- ${i.qty}× ${i.name} (${fmt(i.price_gross)} €)`).join('%0D%0A');
+    const body=[
+      `Name: ${encodeURIComponent(name)}`,
+      `E-Mail: ${encodeURIComponent(email)}`,
+      `Zimmer: ${encodeURIComponent(room)}`,
+      `Hinweise: ${encodeURIComponent(notes)}`,
+      `Zahlart: ${encodeURIComponent(pay)}`,
+      '', 'Positionen:', lines,
+      '', `Netto: ${fmt(t.net)} €`,
+      `MwSt.: ${fmt(t.vatSum)} €`,
+      `Brutto: ${fmt(t.gross)} €`
+    ].join('%0D%0A');
 
-  const mailto=`mailto:${encodeURIComponent(recipients.join(','))}?subject=${encodeURIComponent('Bestellung Mini-Webshop')}&body=${body}`;
-  window.location.href=mailto;
-  msg.textContent="E-Mail-Entwurf geöffnet. Bitte Versand im Mailprogramm bestätigen.";
+    const recipients=[];
+    if(email) recipients.push(email);
+    recipients.push('hotelshop@pflugsmuehle.de');
+
+    const mailto=`mailto:${encodeURIComponent(recipients.join(','))}?subject=${encodeURIComponent('Bestellung Mini-Webshop')}&body=${body}`;
+    window.location.href=mailto;
+    msg.textContent="E-Mail-Entwurf geöffnet. Bitte Versand im Mailprogramm bestätigen.";
+    msg.className="muted";
+    return;
+  }
+
+  // Fall B: Online-Zahlung (Karte/Paypal) -> Worker (Mollie)
+  if (!window.CONFIG.ENDPOINT_URL) {
+    msg.textContent="Online-Zahlung noch nicht konfiguriert (ENDPOINT_URL fehlt).";
+    msg.className="muted danger";
+    return;
+  }
+
+  msg.textContent="Leite zur Zahlung weiter…";
   msg.className="muted";
+
+  try{
+    const res = await fetch(window.CONFIG.ENDPOINT_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        cart: t.items.map(i=>({ id:i.id, name:i.name, qty:i.qty, price_gross:i.price_gross, vat_rate:i.vat_rate })),
+        totals: { net:t.net, vatSum:t.vatSum, gross:t.gross },
+        customer: { name, email, room, notes },
+        currency: 'EUR',
+        source: 'mini-webshop'
+      })
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error || ('HTTP '+res.status));
+    if (data.checkoutUrl) {
+      window.location.href = data.checkoutUrl;
+    } else {
+      throw new Error('Keine checkoutUrl vom Server erhalten.');
+    }
+  }catch(e){
+    msg.textContent='Fehler bei Online-Zahlung: '+(e.message||e);
+    msg.className='muted danger';
+  }
 });
 </script>
 </body>
