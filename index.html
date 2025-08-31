@@ -13,7 +13,7 @@
     .row.space { justify-content: space-between; }
     .btn { background: #0077cc; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; }
     .btn:hover { background: #005fa3; }
-    img { display: block; margin-bottom: 0.5rem; }
+    img.product { display: block; margin-bottom: 0.5rem; max-width: 100%; border-radius: 8px; }
     .muted { color: #666; font-size: 0.9em; }
     .danger { color: red; }
   </style>
@@ -21,7 +21,6 @@
 <body>
 <h1>Mini-Webshop</h1>
 
-<div id="products-status">wird geladen…</div>
 <div id="products" class="grid"></div>
 
 <h2>Warenkorb</h2>
@@ -57,11 +56,10 @@ fetch("./products.json")
   .then(r => r.json())
   .then(data => {
     products = data;
-    document.getElementById('products-status').textContent = products.length+" Artikel geladen";
     render();
   })
   .catch(err => {
-    document.getElementById('products-status').textContent = "Fehler beim Laden: "+err;
+    document.getElementById('products').textContent = "Fehler beim Laden: "+err;
   });
 
 function addToCart(p){
@@ -98,8 +96,7 @@ function render(){
       const img=document.createElement('img');
       img.src=p.image;
       img.alt=p.name;
-      img.style.maxWidth='100%';
-      img.style.borderRadius='8px';
+      img.className='product';
       card.appendChild(img);
     }
     const title=document.createElement('div');
