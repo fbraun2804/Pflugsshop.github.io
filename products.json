@@ -47,4 +47,10 @@
     "price_gross": 8.0,
     "vat_rate": 19.0
   }
+  {
+    "id": "9",
+    "name": "Biere 0,33l",
+    "price_gross": 2.0,
+    "vat_rate": 19.0
+  }
 ]
