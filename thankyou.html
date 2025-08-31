@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Danke – Mini-Webshop</title>
+  <style>
+    :root { --border:#ccc; --muted:#666; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 1rem; }
+    h1 { margin-bottom: .5rem; }
+    .muted { color: var(--muted); }
+    .card { border:1px solid var(--border); border-radius:12px; padding:1rem; margin:.8rem 0; }
+    .row { display:flex; justify-content:space-between; gap:.5rem; }
+    .btn { display:inline-block; background:#0077cc; color:#fff; padding:.55rem .95rem; border-radius:8px; text-decoration:none; }
+    .btn.secondary { background:#f4f6f8; color:#222; border:1px solid #d9dee3; }
+    ul { margin:.4rem 0 0 1rem; }
+    li { margin:.2rem 0; }
+    .totals div { margin:.2rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Danke!</h1>
+  <p class="muted" id="status">Deine Bestellung wurde übermittelt. Falls du online bezahlt hast, wurde der Zahlungsvorgang abgeschlossen oder abgebrochen – du kannst diese Seite als Bestellübersicht nutzen.</p>
+
+  <div id="order" class="card" style="display:none">
+    <h2 style="margin-top:0">Bestellübersicht</h2>
+    <div class="row"><div><strong>Name</strong></div><div id="o-name"></div></div>
+    <div class="row"><div><strong>E-Mail</strong></div><div id="o-email"></div></div>
+    <div class="row"><div><strong>Zimmer</strong></div><div id="o-room"></div></div>
+    <div class="row"><div><strong>Zahlart</strong></div><div id="o-pay"></div></div>
+    <div class="row"><div><strong>Hinweise</strong></div><div id="o-notes"></div></div>
+
+    <h3>Artikel</h3>
+    <ul id="o-items"></ul>
+
+    <div class="totals">
+      <div class="row"><div>Netto</div><div id="o-net">–</div></div>
+      <div class="row"><div>MwSt.</div><div id="o-vat">–</div></div>
+      <div class="row"><strong>Brutto</strong><strong id="o-gross">–</strong></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <a class="btn" href="./">Zurück zum Shop</a>
+    <a class="btn secondary" href="#" id="clear">Gerätedaten löschen</a>
+  </div>
+
+<script>
+function fmt(n){ return (n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+" €"; }
+
+(function load(){
+  try{
+    const raw = localStorage.getItem('lastOrder');
+    if(!raw){ document.getElementById('status').textContent = 'Keine gespeicherten Bestelldaten gefunden.'; return; }
+    const o = JSON.parse(raw);
+    document.getElementById('order').style.display = 'block';
+
+    document.getElementById('o-name').textContent = o?.customer?.name || '';
+    document.getElementById('o-email').textContent = o?.customer?.email || '';
+    document.getElementById('o-room').textContent = o?.customer?.room || '';
+    document.getElementById('o-pay').textContent  = o?.customer?.pay || '';
+    document.getElementById('o-notes').textContent= o?.customer?.notes || '';
+
+    const ul = document.getElementById('o-items');
+    ul.innerHTML = '';
+    (o?.items||[]).forEach(i=>{
+      const li = document.createElement('li');
+      li.textContent = `${i.qty}× ${i.name} (${fmt(i.price_gross)})`;
+      ul.appendChild(li);
+    });
+
+    document.getElementById('o-net').textContent   = fmt(o?.totals?.net);
+    document.getElementById('o-vat').textContent   = fmt(o?.totals?.vatSum);
+    document.getElementById('o-gross').textContent = fmt(o?.totals?.gross);
+  }catch(e){
+    document.getElementById('status').textContent = 'Fehler beim Laden der Bestellübersicht.';
+  }
+})();
+
+document.getElementById('clear').addEventListener('click', (e)=>{
+  e.preventDefault();
+  localStorage.removeItem('lastOrder');
+  location.reload();
+});
+</script>
+</body>
+</html>
