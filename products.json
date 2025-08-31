@@ -2,49 +2,49 @@
   {
     "id": "1",
     "name": "Verschiedene Riegel, wie z.B. Snickers etc.",
-    "price_gross": 20.0,
+    "price_gross": 2.0,
     "vat_rate": 7.0
   },
   {
     "id": "2",
     "name": "Trocken",
-    "price_gross": 140.0,
+    "price_gross": 14.0,
     "vat_rate": 19.0
   },
   {
     "id": "3",
     "name": "Halbtrocken Fruchtig",
-    "price_gross": 120.0,
+    "price_gross": 12.0,
     "vat_rate": 19.0
   },
   {
     "id": "4",
     "name": "Fruchtig, Trocken",
-    "price_gross": 130.0,
+    "price_gross": 13.0,
     "vat_rate": 19.0
   },
   {
     "id": "5",
     "name": "Trocken, wenig Säure",
-    "price_gross": 130.0,
+    "price_gross": 13.0,
     "vat_rate": 19.0
   },
   {
     "id": "6",
     "name": "Mineralwasser still oder spritzig",
-    "price_gross": 20.0,
+    "price_gross": 2.0,
     "vat_rate": 19.0
   },
   {
     "id": "7",
     "name": "Verschiedene Biere: Hell, Pils",
-    "price_gross": 20.0,
+    "price_gross": 2.0,
     "vat_rate": 19.0
   },
   {
     "id": "8",
     "name": "Verschieden Limonaden oder Schorlen von Fritz",
-    "price_gross": 20.0,
+    "price_gross": 2.0,
     "vat_rate": 19.0
   }
 ]
