@@ -15,6 +15,7 @@
     .btn:hover { background: #005fa3; }
     .muted { color: #666; font-size: 0.9em; }
     .danger { color: red; }
+    select, input, textarea { width: 100%; max-width: 420px; padding: .5rem; border-radius: 8px; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
@@ -33,7 +34,14 @@
 <h2>Kunde &amp; Zahlung</h2>
 <div><input id="c-name" placeholder="Name"></div>
 <div><input id="c-email" placeholder="E-Mail"></div>
-<div><input id="c-room" placeholder="Zimmer"></div>
+
+<!-- Zimmer als Dropdown, wird aus zimmer.json befüllt -->
+<div>
+  <select id="c-room">
+    <option value="">Zimmer wählen</option>
+  </select>
+</div>
+
 <div><textarea id="c-notes" placeholder="Hinweise"></textarea></div>
 <div>
   <select id="c-pay">
@@ -55,6 +63,20 @@ fetch("./products.json")
   .then(r => r.json())
   .then(data => { products = data; render(); })
   .catch(err => { document.getElementById('products').textContent = "Fehler beim Laden: "+err; });
+
+// Zimmer laden
+fetch("./zimmer.json")
+  .then(r => r.json())
+  .then(data => {
+    const sel = document.getElementById('c-room');
+    data.forEach(z => {
+      const opt = document.createElement('option');
+      opt.value = z.name;
+      opt.textContent = z.name;
+      sel.appendChild(opt);
+    });
+  })
+  .catch(()=>{ /* optional ignorieren */ });
 
 function addToCart(p){
   const ex = cart.find(i=>i.id==p.id);
@@ -80,6 +102,7 @@ function totals(){
   const net=gross-vatSum;
   return {net,vatSum,gross};
 }
+
 function render(){
   const list=document.getElementById('products');
   list.innerHTML='';
@@ -97,9 +120,9 @@ function render(){
     title.appendChild(name);
     title.appendChild(price);
 
-    // <<< NEU: Abstand nach Name/Preis >>>
+    // Leerzeile zwischen Name/Preis und Button
     const spacer=document.createElement('div');
-    spacer.style.height="0.8em";   // etwas Luft nach unten
+    spacer.style.height="0.8em";
 
     const btn=document.createElement('button');
     btn.className='btn';
@@ -107,11 +130,11 @@ function render(){
     btn.onclick=()=>addToCart(p);
 
     card.appendChild(title);
-    card.appendChild(spacer);   // Leerzeile eingefügt
+    card.appendChild(spacer);
     card.appendChild(btn);
-
     list.appendChild(card);
   });
+
   const cartEl=document.getElementById('cart');
   cartEl.innerHTML='';
   if(cart.length===0){
@@ -133,6 +156,7 @@ function render(){
     row.appendChild(x); row.appendChild(name); row.appendChild(qty); row.appendChild(sum);
     cartEl.appendChild(row);
   });
+
   const t=totals();
   document.getElementById('t-net').textContent=fmt(t.net)+" €";
   document.getElementById('t-vat').textContent=fmt(t.vatSum)+" €";
@@ -142,7 +166,7 @@ function render(){
 document.getElementById('submit').addEventListener('click',()=>{
   const name=document.getElementById('c-name').value.trim();
   const email=document.getElementById('c-email').value.trim();
-  const room=document.getElementById('c-room').value.trim();
+  const room=document.getElementById('c-room').value; // Dropdown-Wert
   const notes=document.getElementById('c-notes').value.trim();
   const pay=document.getElementById('c-pay').value;
   const msg=document.getElementById('msg');
