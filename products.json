@@ -1,16 +1,50 @@
 [
   {
     "id": "1",
-    "name": "Cola 0,5l",
-    "price_gross": 4.2,
-    "vat_rate": 19,
-    "image": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Coca-Cola_bottle_CAP.JPG"
+    "name": "verschiedene Riegel",
+    "price_gross": 2.0,
+    "vat_rate": 7.0
   },
   {
     "id": "2",
-    "name": "Semmel",
-    "price_gross": 3.5,
-    "vat_rate": 7,
-    "image": "https://upload.wikimedia.org/wikipedia/commons/4/45/Semmel.jpg"
+    "name": "Rose' Trocken",
+    "price_gross": 14.0,
+    "vat_rate": 19.0
+  },
+  {
+    "id": "3",
+    "name": "El Mielo",
+    "price_gross": 12.0,
+    "vat_rate": 19.0
+  },
+  {
+    "id": "4",
+    "name": "Kerner",
+    "price_gross": 13.0,
+    "vat_rate": 19.0
+  },
+  {
+    "id": "5",
+    "name": "Grauburgunder",
+    "price_gross": 13.0,
+    "vat_rate": 19.0
+  },
+  {
+    "id": "6",
+    "name": "Riesling",
+    "price_gross": 13.0,
+    "vat_rate": 19.0
+  },
+  {
+    "id": "7",
+    "name": "Weinschorle",
+    "price_gross": 4.0,
+    "vat_rate": 19.0
+  },
+  {
+    "id": "8",
+    "name": "Aperol Spritz",
+    "price_gross": 8.0,
+    "vat_rate": 19.0
   }
 ]
