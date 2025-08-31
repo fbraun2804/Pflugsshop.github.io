@@ -268,26 +268,41 @@ document.getElementById('submit').addEventListener('click',()=>{
   const notes=document.getElementById('c-notes').value.trim();
   const pay=document.getElementById('c-pay').value;
   const msg=document.getElementById('msg');
+
   if(!cart.length){
     msg.textContent="Bitte mindestens einen Artikel wählen."; msg.className="muted danger"; return;
   }
-  const lines=cart.map(i=>`- ${i.qty}× ${i.name} (${fmt(i.price_gross)} €)`).join('%0D%0A');
-  const t=totals();
-  const details=[
+
+  // Empfänger: immer Hotelshop + optional Kunde (falls E-Mail eingetragen)
+  const recipients = ['hotelshop@pflugsmuehle.de'];
+  if (email) recipients.push(email);
+
+  // Betreff & Body
+  const subject = 'Bestellung Mini-Webshop';
+  const lines = cart.map(i=>`- ${i.qty}× ${i.name} (${fmt(i.price_gross)} €)`).join('%0D%0A');
+  const t = totals();
+  const body = [
     `Name: ${encodeURIComponent(name)}`,
     `E-Mail: ${encodeURIComponent(email)}`,
     `Zimmer: ${encodeURIComponent(room)}`,
     `Hinweise: ${encodeURIComponent(notes)}`,
     `Zahlart: ${encodeURIComponent(pay)}`,
-    '', 'Positionen:', lines,
-    '', `Netto: ${fmt(t.net)} €`,
+    '',
+    'Positionen:',
+    lines,
+    '',
+    `Netto: ${fmt(t.net)} €`,
     `MwSt.: ${fmt(t.vatSum)} €`,
     `Brutto: ${fmt(t.gross)} €`
   ].join('%0D%0A');
-  const mailto=`mailto:?subject=${encodeURIComponent('Bestellung Mini-Webshop')}&body=${details}`;
-  window.location.href=mailto;
-  msg.textContent="E-Mail-Entwurf geöffnet. Bitte Versand im Mailprogramm bestätigen.";
-  msg.className="muted";
+
+  // mailto mit mehreren Empfängern (Komma-getrennt)
+  const to = encodeURIComponent(recipients.join(','));
+  const mailto = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${body}`;
+
+  window.location.href = mailto;
+  msg.textContent = "E-Mail-Entwurf geöffnet. Bitte Versand im Mailprogramm bestätigen.";
+  msg.className = "muted";
 });
 </script>
 </body>
