@@ -86,6 +86,7 @@ function render(){
   products.forEach(p=>{
     const card=document.createElement('div');
     card.className='card';
+
     const title=document.createElement('div');
     title.className='row space';
     const name=document.createElement('div');
@@ -95,12 +96,20 @@ function render(){
     price.textContent=fmt(p.price_gross)+" €";
     title.appendChild(name);
     title.appendChild(price);
+
+    // <<< NEU: Abstand nach Name/Preis >>>
+    const spacer=document.createElement('div');
+    spacer.style.height="0.8em";   // etwas Luft nach unten
+
     const btn=document.createElement('button');
     btn.className='btn';
     btn.textContent='Hinzufügen';
     btn.onclick=()=>addToCart(p);
+
     card.appendChild(title);
+    card.appendChild(spacer);   // Leerzeile eingefügt
     card.appendChild(btn);
+
     list.appendChild(card);
   });
   const cartEl=document.getElementById('cart');
