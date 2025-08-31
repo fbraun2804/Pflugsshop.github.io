@@ -7,25 +7,25 @@
   },
   {
     "id": "2",
-    "name": "Trocken",
+    "name": "Rose Trocken",
     "price_gross": 14.0,
     "vat_rate": 19.0
   },
   {
     "id": "3",
-    "name": "Halbtrocken Fruchtig",
+    "name": "El Mielo   Halbtrocken Fruchtig",
     "price_gross": 12.0,
     "vat_rate": 19.0
   },
   {
     "id": "4",
-    "name": "Fruchtig, Trocken",
+    "name": "Kerner   Fruchtig, Trocken",
     "price_gross": 13.0,
     "vat_rate": 19.0
   },
   {
     "id": "5",
-    "name": "Trocken, wenig Säure",
+    "name": "Grauburgunder   Trocken, wenig Säure",
     "price_gross": 13.0,
     "vat_rate": 19.0
   },
