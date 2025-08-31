@@ -15,7 +15,17 @@
     .btn:hover { background: #005fa3; }
     .muted { color: #666; font-size: 0.9em; }
     .danger { color: red; }
-    select, input, textarea { width: 100%; max-width: 420px; padding: .5rem; border-radius: 8px; border: 1px solid #ccc; }
+
+    /* Formularelemente: volle Breite + einheitlicher Abstand */
+    select, input, textarea {
+      width: 100%;
+      max-width: 420px;
+      padding: .5rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-bottom: 0.8rem; /* Leerzeile zwischen Feldern */
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
