@@ -5,26 +5,71 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mini-Webshop</title>
   <style>
-    body { font-family: sans-serif; margin: 1rem; }
+    :root {
+      --field-max: 420px;
+      --gap: 0.8rem;
+      --border: #ccc;
+      --muted: #666;
+      --btn: #0077cc;
+      --btn-hover: #005fa3;
+      --btn-ghost-bg: #f4f6f8;
+      --btn-ghost-border: #d9dee3;
+    }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 1rem; }
     h1 { margin-bottom: 1rem; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 1rem; }
-    .card { border: 1px solid #ccc; border-radius: 12px; padding: 1rem; box-shadow: 2px 2px 6px rgba(0,0,0,.1); }
+    .card { border: 1px solid var(--border); border-radius: 12px; padding: 1rem; box-shadow: 2px 2px 6px rgba(0,0,0,.06); }
     .row { display: flex; align-items: center; gap: 0.5rem; }
-    .row.space { justify-content: space-between; }
-    .btn { background: #0077cc; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; }
-    .btn:hover { background: #005fa3; }
-    .muted { color: #666; font-size: 0.9em; }
-    .danger { color: red; }
+    .row.space { justify-content: space-between; flex-wrap: wrap; }
+    .btn { background: var(--btn); color: white; border: none; padding: 0.55rem 0.95rem; border-radius: 8px; cursor: pointer; }
+    .btn:hover { background: var(--btn-hover); }
+    .btn.ghost { background: var(--btn-ghost-bg); color: #222; border: 1px solid var(--btn-ghost-border); }
+    .btn.square { width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 22px; line-height: 1; border-radius: 10px; }
+    .muted { color: var(--muted); font-size: 0.9em; }
+    .danger { color: #b00020; }
 
-    /* Formularelemente: volle Breite + einheitlicher Abstand */
+    /* Einheitliche, mobile-breite Formularelemente */
     select, input, textarea {
       width: 100%;
-      max-width: 420px;
-      padding: .5rem;
+      max-width: var(--field-max);
+      padding: .6rem .8rem;
       border-radius: 8px;
-      border: 1px solid #ccc;
-      margin-bottom: 0.8rem; /* Leerzeile zwischen Feldern */
+      border: 1px solid var(--border);
+      margin-bottom: var(--gap);
       box-sizing: border-box;
+      display: block;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-color: #fff;
+      font-size: 16px; /* iOS: verhindert Zoom beim Fokus */
+    }
+    /* Kleines ▼-Icon rechts im Select */
+    select {
+      background:
+        white
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='10' viewBox='0 0 14 10'><path d='M2 2l5 5 5-5' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round'/></svg>")
+        no-repeat right .8rem center / 14px 10px;
+      padding-right: 2rem;
+    }
+
+    /* Mengensteuerung (−  [Anzahl]  +) */
+    .qty { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .qty .num {
+      min-width: 2.2em; text-align: center; font-weight: 600;
+      padding: .4rem .6rem; border: 1px solid var(--btn-ghost-border);
+      border-radius: 8px; background: #fff;
+    }
+
+    /* Warenkorb-Zeile */
+    .cart-row { display: grid; grid-template-columns: auto 1fr auto auto; gap: .6rem; align-items: center; padding: .4rem 0; }
+    .cart-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cart-remove { background: #fff; color: #c62828; border: 1px solid #ef9a9a; }
+    .cart-remove:hover { background: #ffeaea; }
+    @media (max-width: 420px) {
+      .cart-row { grid-template-columns: 1fr auto; grid-row-gap: .4rem; }
+      .cart-row .name { grid-column: 1 / -1; }
+      .cart-row .sum { justify-self: end; }
     }
   </style>
 </head>
@@ -42,19 +87,19 @@
 <div class="row"><strong>Brutto</strong><strong id="t-gross">0,00 €</strong></div>
 
 <h2>Kunde &amp; Zahlung</h2>
-<div><input id="c-name" placeholder="Name"></div>
-<div><input id="c-email" placeholder="E-Mail"></div>
+<div><input id="c-name" placeholder="Name" autocomplete="name"></div>
+<div><input id="c-email" placeholder="E-Mail" type="email" autocomplete="email"></div>
 
 <!-- Zimmer als Dropdown, wird aus zimmer.json befüllt -->
 <div>
-  <select id="c-room">
+  <select id="c-room" aria-label="Zimmer">
     <option value="">Zimmer wählen</option>
   </select>
 </div>
 
-<div><textarea id="c-notes" placeholder="Hinweise"></textarea></div>
+<div><textarea id="c-notes" placeholder="Hinweise" rows="3"></textarea></div>
 <div>
-  <select id="c-pay">
+  <select id="c-pay" aria-label="Zahlungsart">
     <option>Bar</option>
     <option>Zimmerrechnung</option>
     <option>Karte</option>
@@ -66,6 +111,7 @@
 
 <script>
 const fmt = n => (n||0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+
 let products=[], cart=[];
 
 // Produkte laden
@@ -88,18 +134,20 @@ fetch("./zimmer.json")
   })
   .catch(()=>{ /* optional ignorieren */ });
 
-function addToCart(p){
-  const ex = cart.find(i=>i.id==p.id);
-  if(ex){ ex.qty+=1; } else {
-    cart.push({id:p.id, name:p.name, price_gross:p.price_gross, vat_rate:p.vat_rate, qty:1});
-  }
+// Warenkorb-Helpers
+function inCart(id){ return cart.find(i=>i.id==id); }
+function addToCart(p, delta=1){
+  const ex = inCart(p.id);
+  if(ex){ ex.qty = Math.max(0, ex.qty + delta); }
+  else if(delta > 0){ cart.push({id:p.id, name:p.name, price_gross:p.price_gross, vat_rate:p.vat_rate, qty:delta}); }
+  cart = cart.filter(i=>i.qty>0);
   render();
 }
-function changeQty(id,q){
-  const it = cart.find(i=>i.id==id);
+function setQty(id, q){
+  const it = inCart(id);
   if(!it) return;
-  it.qty=Math.max(0,Number(q)||0);
-  cart=cart.filter(i=>i.qty>0);
+  it.qty = Math.max(0, Number(q)||0);
+  cart = cart.filter(i=>i.qty>0);
   render();
 }
 function totals(){
@@ -114,6 +162,7 @@ function totals(){
 }
 
 function render(){
+  // Produktliste
   const list=document.getElementById('products');
   list.innerHTML='';
   products.forEach(p=>{
@@ -130,14 +179,13 @@ function render(){
     title.appendChild(name);
     title.appendChild(price);
 
-    // Leerzeile zwischen Name/Preis und Button
     const spacer=document.createElement('div');
-    spacer.style.height="0.8em";
+    spacer.style.height="0.8rem";
 
     const btn=document.createElement('button');
     btn.className='btn';
     btn.textContent='Hinzufügen';
-    btn.onclick=()=>addToCart(p);
+    btn.onclick=()=>addToCart(p, 1);
 
     card.appendChild(title);
     card.appendChild(spacer);
@@ -145,6 +193,7 @@ function render(){
     list.appendChild(card);
   });
 
+  // Warenkorb
   const cartEl=document.getElementById('cart');
   cartEl.innerHTML='';
   if(cart.length===0){
@@ -155,15 +204,54 @@ function render(){
   }
   cart.forEach(i=>{
     const row=document.createElement('div');
-    row.className='row';
-    const x=document.createElement('button');
-    x.className='btn'; x.textContent='X';
-    x.onclick=()=>{cart=cart.filter(a=>a.id!==i.id); render();};
-    const name=document.createElement('div'); name.style.flex='1'; name.textContent=i.name;
-    const qty=document.createElement('input'); qty.type='number'; qty.min='0'; qty.value=i.qty;
-    qty.oninput=e=>changeQty(i.id,e.target.value);
-    const sum=document.createElement('div'); sum.textContent=fmt(i.qty*i.price_gross)+" €";
-    row.appendChild(x); row.appendChild(name); row.appendChild(qty); row.appendChild(sum);
+    row.className='cart-row';
+
+    // Entfernen-Button
+    const remove=document.createElement('button');
+    remove.className='btn square cart-remove';
+    remove.setAttribute('aria-label','Entfernen');
+    remove.textContent='✕';
+    remove.onclick=()=>{ cart = cart.filter(a=>a.id!==i.id); render(); };
+
+    // Name
+    const nm=document.createElement('div');
+    nm.className='name';
+    nm.textContent=i.name;
+
+    // Menge: − [Anzahl] +
+    const qtyWrap = document.createElement('div');
+    qtyWrap.className='qty';
+
+    const minus = document.createElement('button');
+    minus.className='btn ghost square';
+    minus.setAttribute('aria-label','Menge verringern');
+    minus.textContent='−';
+    minus.onclick=()=>setQty(i.id, i.qty-1);
+
+    const num = document.createElement('div');
+    num.className='num';
+    num.textContent = i.qty;
+
+    const plus = document.createElement('button');
+    plus.className='btn ghost square';
+    plus.setAttribute('aria-label','Menge erhöhen');
+    plus.textContent='+';
+    plus.onclick=()=>setQty(i.id, i.qty+1);
+
+    qtyWrap.appendChild(minus);
+    qtyWrap.appendChild(num);
+    qtyWrap.appendChild(plus);
+
+    // Summe
+    const sum=document.createElement('div');
+    sum.className='sum';
+    sum.textContent = fmt(i.qty*i.price_gross)+" €";
+
+    row.appendChild(remove);
+    row.appendChild(nm);
+    row.appendChild(qtyWrap);
+    row.appendChild(sum);
+
     cartEl.appendChild(row);
   });
 
@@ -176,7 +264,7 @@ function render(){
 document.getElementById('submit').addEventListener('click',()=>{
   const name=document.getElementById('c-name').value.trim();
   const email=document.getElementById('c-email').value.trim();
-  const room=document.getElementById('c-room').value; // Dropdown-Wert
+  const room=document.getElementById('c-room').value;
   const notes=document.getElementById('c-notes').value.trim();
   const pay=document.getElementById('c-pay').value;
   const msg=document.getElementById('msg');
