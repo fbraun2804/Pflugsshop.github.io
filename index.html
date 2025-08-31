@@ -99,6 +99,14 @@
     function buildLinesUI(){
       const wrap = document.getElementById('lines'); wrap.innerHTML = '';
       state.lines.forEach((l, idx) => {
+        if (p.image) {
+  const img = document.createElement('img');
+  img.src = p.image;
+  img.alt = p.name;
+  img.style.maxWidth = '100%';
+  img.style.borderRadius = '8px';
+  card.appendChild(img);
+}
         const card = document.createElement('div'); card.className = 'card';
         const s = document.createElement('select');
         const d0 = document.createElement('option'); d0.value=''; d0.textContent='Artikel wählen'; s.appendChild(d0);
