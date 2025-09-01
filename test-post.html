@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Worker POST Test</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:20px}
+  button{padding:.6rem 1rem;border-radius:8px;border:1px solid #ccc;background:#f4f6f8;cursor:pointer}
+  pre{white-space:pre-wrap;border:1px solid #ddd;padding:12px;border-radius:8px;margin-top:12px}
+</style>
+
+<h1>Worker POST Test</h1>
+<p>Testet den POST <code>{ "diag": true }</code> gegen deinen Worker.</p>
+
+<label>Worker-URL:
+  <input id="u" style="width:100%" value="https://hotelshop-worker.f-braun.workers.dev">
+</label>
+<br><br>
+<button id="go">Senden</button>
+
+<pre id="out">Noch nichts gesendet…</pre>
+
+<script>
+document.getElementById('go').onclick = async () => {
+  const url = document.getElementById('u').value.trim();
+  const out = document.getElementById('out');
+  out.textContent = 'Sende…';
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ diag: true })
+    });
+    const txt = await r.text();
+    out.textContent = 'HTTP ' + r.status + '\n\n' + txt;
+  } catch (e) {
+    out.textContent = 'Fehler: ' + (e.message || e);
+  }
+};
+</script>
