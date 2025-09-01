@@ -294,33 +294,41 @@ document.getElementById('submit').addEventListener('click', async ()=>{
     msg.textContent="Bitte mindestens einen Artikel wählen."; msg.className="muted danger"; return;
   }
 
-  // Fall A: Bar/Zimmerrechnung -> E-Mail-Entwurf
-  if (pay==='Bar' || pay==='Zimmerrechnung') {
-    const lines=t.items.map(i=>`- ${i.qty}× ${i.name} (${fmt(i.price_gross)} €)`).join('%0D%0A');
-    const body=[
-      `Name: ${encodeURIComponent(name)}`,
-      `E-Mail: ${encodeURIComponent(email)}`,
-      `Zimmer: ${encodeURIComponent(room)}`,
-      `Hinweise: ${encodeURIComponent(notes)}`,
-      `Zahlart: ${encodeURIComponent(pay)}`,
-      '', 'Positionen:', lines,
-      '', `Netto: ${fmt(t.net)} €`,
-      `MwSt.: ${fmt(t.vatSum)} €`,
-      `Brutto: ${fmt(t.gross)} €`
-    ].join('%0D%0A');
-
-    // Empfänger-Reihenfolge: Kunde -> hotelshop -> info
-    const recipients=[];
-    if(email) recipients.push(email);
-    recipients.push('hotelshop@pflugsmuehle.de');
-    recipients.push('info@pflugsmuehle.de');
-
-    const mailto=`mailto:${encodeURIComponent(recipients.join(','))}?subject=${encodeURIComponent('Bestellung Mini-Webshop')}&body=${body}`;
-    window.location.href=mailto;
-    msg.textContent="E-Mail-Entwurf geöffnet. Bitte Versand im Mailprogramm bestätigen.";
-    msg.className="muted";
+  // Fall A: Bar/Zimmerrechnung -> an Worker senden, dort Baserow schreiben -> n8n wird via Baserow-Webhook getriggert
+if (pay==='Bar' || pay==='Zimmerrechnung') {
+  msg.textContent = "Sende Bestellung …";
+  try{
+    const res = await fetch(window.CONFIG.ENDPOINT_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        cart: t.items.map(i=>({ id:i.id, name:i.name, qty:i.qty, price_gross:i.price_gross, vat_rate:i.vat_rate })),
+        totals: { net:t.net, vatSum:t.vatSum, gross:t.gross },
+        customer: { name, email, room, notes, pay },
+        currency: 'EUR',
+        source: 'mini-webshop'
+      })
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error || ('HTTP '+res.status));
+    // Optional: lokale Kopie für thankyou.html
+    localStorage.setItem('lastOrder', JSON.stringify({
+      items: t.items,
+      totals: { net: t.net, vatSum: t.vatSum, gross: t.gross },
+      customer: { name, email, room, notes, pay }
+    }));
+    msg.textContent = "Bestellung übermittelt. Du erhältst gleich eine Bestätigung per E-Mail.";
+    msg.className = "muted";
+    // Warenkorb leeren
+    cart = [];
+    render();
+    return;
+  }catch(e){
+    msg.textContent='Fehler: '+(e.message||e);
+    msg.className='muted danger';
     return;
   }
+}
 
   // Fall B: Online-Zahlung (Karte/Paypal) -> Worker (Mollie)
   if (!window.CONFIG.ENDPOINT_URL) {
