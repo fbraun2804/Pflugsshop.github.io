@@ -4,6 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mini-Webshop</title>
+
+  <!-- >> HIER deine Worker-URL eintragen (ist schon gesetzt) -->
+  <script>
+    window.CONFIG = {
+      ENDPOINT_URL: "https://hotelshop-worker.f-braun.workers.dev"
+    };
+  </script>
+
   <style>
     :root {
       --field-max: 420px;
@@ -18,6 +26,7 @@
     }
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 1rem; }
     h1 { margin-bottom: 1rem; }
+    h2 { margin-top: 1.2rem; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 1rem; }
     .card { border: 1px solid var(--border); border-radius: 12px; padding: 1rem; box-shadow: 2px 2px 6px rgba(0,0,0,.06); background: #fff; transition: box-shadow .2s, background-color .2s; }
     .card.added { box-shadow: 0 0 0 2px #8cd3ff inset, 2px 2px 10px rgba(0,0,0,.12); background: var(--added); }
@@ -74,17 +83,11 @@
       .cart-row .sum { justify-self: end; }
     }
   </style>
-
-  <script>
-    // Cloudflare-Worker-URL für Online-Zahlung (Karte/Paypal)
-    window.CONFIG = {
-      ENDPOINT_URL: "https://wild-cloud-edf6.f-braun.workers.dev"
-    };
-  </script>
 </head>
 <body>
 <h1>Mini-Webshop</h1>
 
+<h2>Artikel</h2>
 <div id="products" class="grid"></div>
 
 <h2>Warenkorb</h2>
@@ -113,30 +116,31 @@
   </select>
 </div>
 <button id="submit" class="btn">Bestellung abschicken</button>
-<div id="msg" class="muted"></div>
+<div id="msg" class="muted" style="margin-top:.5rem;"></div>
 
 <script>
 const fmt = n => (n||0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
 let products=[], cart=[];
 
-// Produkte laden
+// Produkte laden (aus products.json im gleichen Ordner)
 fetch("./products.json")
   .then(r => r.json())
-  .then(data => { products = data; render(); })
+  .then(data => { products = Array.isArray(data) ? data : []; render(); })
   .catch(err => { document.getElementById('products').textContent = "Fehler beim Laden: "+err; });
 
-// Zimmer laden
+// Zimmer laden (aus zimmer.json im gleichen Ordner)
 fetch("./zimmer.json")
   .then(r => r.json())
   .then(data => {
     const sel = document.getElementById('c-room');
-    data.forEach(z => {
+    (data||[]).forEach(z => {
       const opt = document.createElement('option');
-      opt.value = z.name;
-      opt.textContent = z.name;
+      opt.value = z.name || z;
+      opt.textContent = z.name || z;
       sel.appendChild(opt);
     });
-  });
+  })
+  .catch(()=>{});
 
 // --- Helpers ---
 function inCart(id){ return cart.find(i=>i.id==id); }
@@ -294,50 +298,13 @@ document.getElementById('submit').addEventListener('click', async ()=>{
     msg.textContent="Bitte mindestens einen Artikel wählen."; msg.className="muted danger"; return;
   }
 
-  // Fall A: Bar/Zimmerrechnung -> an Worker senden, dort Baserow schreiben -> n8n wird via Baserow-Webhook getriggert
-if (pay==='Bar' || pay==='Zimmerrechnung') {
-  msg.textContent = "Sende Bestellung …";
-  try{
-    const res = await fetch(window.CONFIG.ENDPOINT_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        cart: t.items.map(i=>({ id:i.id, name:i.name, qty:i.qty, price_gross:i.price_gross, vat_rate:i.vat_rate })),
-        totals: { net:t.net, vatSum:t.vatSum, gross:t.gross },
-        customer: { name, email, room, notes, pay },
-        currency: 'EUR',
-        source: 'mini-webshop'
-      })
-    });
-    const data = await res.json().catch(()=>({}));
-    if(!res.ok) throw new Error(data.error || ('HTTP '+res.status));
-    // Optional: lokale Kopie für thankyou.html
-    localStorage.setItem('lastOrder', JSON.stringify({
-      items: t.items,
-      totals: { net: t.net, vatSum: t.vatSum, gross: t.gross },
-      customer: { name, email, room, notes, pay }
-    }));
-    msg.textContent = "Bestellung übermittelt. Du erhältst gleich eine Bestätigung per E-Mail.";
-    msg.className = "muted";
-    // Warenkorb leeren
-    cart = [];
-    render();
-    return;
-  }catch(e){
-    msg.textContent='Fehler: '+(e.message||e);
-    msg.className='muted danger';
-    return;
-  }
-}
-
-  // Fall B: Online-Zahlung (Karte/Paypal) -> Worker (Mollie)
   if (!window.CONFIG.ENDPOINT_URL) {
-    msg.textContent="Online-Zahlung noch nicht konfiguriert (ENDPOINT_URL fehlt).";
+    msg.textContent="Server-Endpunkt fehlt (ENDPOINT_URL).";
     msg.className="muted danger";
     return;
   }
 
-  msg.textContent="Leite zur Zahlung weiter…";
+  msg.textContent="Sende Bestellung …";
   msg.className="muted";
 
   try{
@@ -353,20 +320,30 @@ if (pay==='Bar' || pay==='Zimmerrechnung') {
       })
     });
     const data = await res.json().catch(()=>({}));
-    if(!res.ok) throw new Error(data.error || ('HTTP '+res.status));
-    if (data.checkoutUrl) {
-      // Bestellung lokal speichern für thankyou.html
+    if(!res.ok) throw new Error((data && (data.error||data.detail)) || ('HTTP '+res.status));
+
+    // Online-Zahlung?
+    if (data.mode === 'online' && data.checkoutUrl) {
+      // lokale Kopie für thankyou.html
       localStorage.setItem('lastOrder', JSON.stringify({
         items: t.items,
         totals: { net: t.net, vatSum: t.vatSum, gross: t.gross },
         customer: { name, email, room, notes, pay }
       }));
       window.location.href = data.checkoutUrl;
-    } else {
-      throw new Error('Keine checkoutUrl vom Server erhalten.');
+      return;
     }
+
+    // Offline-Fall (Bar/Zimmerrechnung)
+    msg.textContent = "Bestellung übermittelt. Du erhältst gleich eine Bestätigung per E-Mail.";
+    msg.className = "muted";
+
+    // Warenkorb leeren
+    cart = [];
+    render();
+
   }catch(e){
-    msg.textContent='Fehler bei Online-Zahlung: '+(e.message||e);
+    msg.textContent='Fehler: '+(e.message||e);
     msg.className='muted danger';
   }
 });
