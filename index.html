@@ -3,350 +3,282 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mini-Webshop</title>
-
-  <!-- >> HIER deine Worker-URL eintragen (ist schon gesetzt) -->
-  <script>
-    window.CONFIG = {
-      ENDPOINT_URL: "https://hotelshop-worker.f-braun.workers.dev"
-    };
-  </script>
-
+  <title>Pflugsmühle – Gutschein bestellen</title>
   <style>
-    :root {
-      --field-max: 420px;
-      --gap: 0.8rem;
-      --border: #ccc;
-      --muted: #666;
-      --btn: #0077cc;
-      --btn-hover: #005fa3;
-      --btn-ghost-bg: #f4f6f8;
-      --btn-ghost-border: #d9dee3;
-      --added: #dff4ff;
-    }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 1rem; }
-    h1 { margin-bottom: 1rem; }
-    h2 { margin-top: 1.2rem; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 1rem; }
-    .card { border: 1px solid var(--border); border-radius: 12px; padding: 1rem; box-shadow: 2px 2px 6px rgba(0,0,0,.06); background: #fff; transition: box-shadow .2s, background-color .2s; }
-    .card.added { box-shadow: 0 0 0 2px #8cd3ff inset, 2px 2px 10px rgba(0,0,0,.12); background: var(--added); }
-    .row { display: flex; align-items: center; gap: 0.5rem; }
-    .row.space { justify-content: space-between; flex-wrap: wrap; }
-    .btn { background: var(--btn); color: white; border: none; padding: 0.55rem 0.95rem; border-radius: 8px; cursor: pointer; }
-    .btn:hover { background: var(--btn-hover); }
-    .btn.ghost { background: var(--btn-ghost-bg); color: #222; border: 1px solid var(--btn-ghost-border); }
-    .btn.square { width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 22px; line-height: 1; border-radius: 10px; }
-    .muted { color: var(--muted); font-size: 0.9em; }
-    .danger { color: #b00020; }
+    :root { --gap: 12px; --fg:#222; --muted:#666; --bd:#e6e6e6; --accent:#0a7; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: var(--fg); margin: 0; background:#fafafa; }
+    .wrap { max-width: 840px; margin: 24px auto; background:#fff; border:1px solid var(--bd); border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,.03); }
+    h1 { font-size: 22px; margin: 0 0 14px; }
+    p.note { color: var(--muted); margin: 0 0 18px; }
 
-    /* Formularelemente einheitlich & mobil-optimiert */
-    select, input, textarea {
-      width: 100%;
-      max-width: var(--field-max);
-      padding: .6rem .8rem;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      margin-bottom: var(--gap);
-      box-sizing: border-box;
-      display: block;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-      background-color: #fff;
-      font-size: 16px; /* iOS: verhindert Zoom beim Fokus */
-    }
-    /* Kleines ▼-Icon im Select */
-    select {
-      background:
-        white
-        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='10' viewBox='0 0 14 10'><path d='M2 2l5 5 5-5' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round'/></svg>")
-        no-repeat right .8rem center / 14px 10px;
-      padding-right: 2rem;
-    }
+    form { display: grid; gap: var(--gap); }
+    .row { display: grid; gap: var(--gap); }
 
-    /* Mengensteuerung (−  [Anzahl]  +) */
-    .qty { display: inline-flex; align-items: center; gap: 0.4rem; }
-    .qty .num {
-      min-width: 2.2em; text-align: center; font-weight: 600;
-      padding: .4rem .6rem; border: 1px solid var(--btn-ghost-border);
-      border-radius: 8px; background: #fff;
-    }
+    /* Zeile 1: Gutschein (35%) + Anzahl + Wert */
+    .row.top { grid-template-columns: 35% 20% 1fr; align-items: end; }
+    @media (max-width: 760px) { .row.top { grid-template-columns: 1fr; } }
 
-    /* Warenkorb-Zeile */
-    .cart-row { display: grid; grid-template-columns: auto 1fr auto auto; gap: .6rem; align-items: center; padding: .4rem 0; }
-    .cart-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cart-remove { background: #fff; color: #c62828; border: 1px solid #ef9a9a; }
-    .cart-remove:hover { background: #ffeaea; }
-    @media (max-width: 420px) {
-      .cart-row { grid-template-columns: 1fr auto; grid-row-gap: .4rem; }
-      .cart-row .name { grid-column: 1 / -1; }
-      .cart-row .sum { justify-self: end; }
+    label { display:block; font-size: 14px; margin: 0 0 6px; }
+    input[type="text"], input[type="email"], input[type="number"], textarea, select {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--bd); border-radius: 8px; font-size: 16px; background:#fff;
     }
+    textarea { min-height: 100px; resize: vertical; }
+
+    .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .counter { font-size: 12px; color: var(--muted); text-align: right; margin-top: 4px; }
+
+    .checkbox { display:flex; gap:8px; align-items: flex-start; }
+    .checkbox input { margin-top: 4px; }
+
+    .actions { margin-top: 8px; display:flex; justify-content:flex-end; }
+    button { background: var(--accent); color:#fff; border:0; border-radius: 10px; font-weight:600; padding: 12px 16px; font-size: 16px; cursor:pointer; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+
+    .error { color:#b00020; font-size: 13px; margin-top: 4px; }
+    .alert { padding:10px 12px; border-radius:8px; background:#fff4f4; color:#7a0010; border:1px solid #ffd9d9; display:none; }
+    .ok { background:#f2fff6; color:#0a502c; border-color:#bce5cd; }
   </style>
 </head>
 <body>
-<h1>Mini-Webshop</h1>
+  <div class="wrap">
+    <h1>Gutschein bestellen</h1>
+    <p class="note">Wählen Sie einen Gutschein, die gewünschte Anzahl und ggf. den Betrag. Die Bezahlung erfolgt sicher über Mollie.</p>
 
-<h2>Artikel</h2>
-<div id="products" class="grid"></div>
+    <div id="msg" class="alert"></div>
 
-<h2>Warenkorb</h2>
-<div id="cart"></div>
+    <form id="voucherForm" novalidate>
+      <!-- Zeile 1: Auswahl + Anzahl + Wert -->
+      <div class="row top">
+        <div>
+          <label for="artikel">Gutschein</label>
+          <select id="artikel" name="artikel_id" required></select>
+          <div class="hint" id="artikelHint"></div>
+        </div>
+        <div>
+          <label for="anzahl">Anzahl</label>
+          <input id="anzahl" name="anzahl" type="number" inputmode="numeric" min="1" max="50" step="1" value="1" required />
+        </div>
+        <div>
+          <label for="betrag">Wert (€)</label>
+          <input id="betrag" name="betrag" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="z. B. 50,00" required />
+          <div class="hint" id="betragHint"></div>
+        </div>
+      </div>
 
-<h2>Zusammenfassung</h2>
-<div class="row"><div>Netto</div><div id="t-net">0,00 €</div></div>
-<div class="row"><div>MwSt.</div><div id="t-vat">0,00 €</div></div>
-<div class="row"><strong>Brutto</strong><strong id="t-gross">0,00 €</strong></div>
+      <!-- Zeile 2: E-Mail + Wiederholung -->
+      <div class="row" style="grid-template-columns: 1fr 1fr;">
+        <div>
+          <label for="email">E-Mail</label>
+          <input id="email" name="email" type="email" autocomplete="email" required />
+          <div class="error" id="emailErr" hidden>Bitte geben Sie eine gültige E-Mail ein.</div>
+        </div>
+        <div>
+          <label for="email2">E-Mail (Wiederholung)</label>
+          <input id="email2" name="email_confirm" type="email" autocomplete="off" required />
+          <div class="error" id="email2Err" hidden>Die E-Mails stimmen nicht überein.</div>
+        </div>
+      </div>
 
-<h2>Kunde &amp; Zahlung</h2>
-<div><input id="c-name" placeholder="Name" autocomplete="name"></div>
-<div><input id="c-email" placeholder="E-Mail" type="email" autocomplete="email"></div>
-<div>
-  <select id="c-room" aria-label="Zimmer">
-    <option value="">Zimmer wählen</option>
-  </select>
-</div>
-<div><textarea id="c-notes" placeholder="Hinweise" rows="3"></textarea></div>
-<div>
-  <select id="c-pay" aria-label="Zahlungsart">
-    <option>Bar</option>
-    <option>Zimmerrechnung</option>
-    <option>Karte</option>
-    <option>Paypal</option>
-  </select>
-</div>
-<button id="submit" class="btn">Bestellung abschicken</button>
-<div id="msg" class="muted" style="margin-top:.5rem;"></div>
+      <!-- Zeile 3: Name -->
+      <div class="row">
+        <div>
+          <label for="name">Ihr Name</label>
+          <input id="name" name="name" type="text" />
+        </div>
+      </div>
 
-<script>
-const fmt = n => (n||0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
-let products=[], cart=[];
+      <!-- Zeile 4: Nachricht -->
+      <div class="row">
+        <div>
+          <label for="message">Hier können Sie, wenn Sie das möchten, Text (200 Zeichen) eingeben, der dann auf dem Gutschein gedruckt wird.</label>
+          <textarea id="message" name="message_to_recipient" maxlength="200" placeholder="z. B. ‚Alles Gute zum Geburtstag!‘"></textarea>
+          <div class="counter"><span id="mc">0</span>/200</div>
+        </div>
+      </div>
 
-// Produkte laden (aus products.json im gleichen Ordner)
-fetch("./products.json")
-  .then(r => r.json())
-  .then(data => { products = Array.isArray(data) ? data : []; render(); })
-  .catch(err => { document.getElementById('products').textContent = "Fehler beim Laden: "+err; });
+      <!-- Zeile 5: AGB -->
+      <div class="row">
+        <label class="checkbox">
+          <input id="agb" name="agb" type="checkbox" required />
+          <span>Ich akzeptiere die <a href="https://gut-c2p.pages.dev/agb.html" target="_blank" rel="noopener">Allgemeinen Geschäftsbedingungen (AGB)</a>.</span>
+        </label>
+        <div class="error" id="agbErr" hidden>Bitte akzeptieren Sie die AGB.</div>
+      </div>
 
-// Zimmer laden (aus zimmer.json im gleichen Ordner)
-fetch("./zimmer.json")
-  .then(r => r.json())
-  .then(data => {
-    const sel = document.getElementById('c-room');
-    (data||[]).forEach(z => {
-      const opt = document.createElement('option');
-      opt.value = z.name || z;
-      opt.textContent = z.name || z;
-      sel.appendChild(opt);
-    });
-  })
-  .catch(()=>{});
+      <div class="actions">
+        <button id="submitBtn" type="submit">Zur Kasse</button>
+      </div>
+    </form>
+  </div>
 
-// --- Helpers ---
-function inCart(id){ return cart.find(i=>i.id==id); }
+  <script>
+    // ==== Einstellungen ====
+    // Falls deine Worker-URL anders ist, hier anpassen:
+    const BACKEND_BASE = 'https://vouchers-backend.f-braun.workers.dev';
 
-function smoothKeepVisible(el){
-  // Auf schmalen Geräten: so scrollen, dass die Karte gerade noch sichtbar bleibt
-  if (window.innerWidth > 640 || !el) return;
-  const rect = el.getBoundingClientRect();
-  const overflowBottom = rect.bottom - (window.innerHeight - 12);
-  if (overflowBottom > 0) {
-    window.scrollBy({ top: overflowBottom, behavior: 'smooth' });
-  } else if (rect.top < 0) {
-    el.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  }
-}
+    // ==== Elemente ====
+    const selArtikel = document.getElementById('artikel');
+    const artikelHint = document.getElementById('artikelHint');
+    const inpAnzahl = document.getElementById('anzahl');
+    const inpBetrag = document.getElementById('betrag');
+    const betragHint = document.getElementById('betragHint');
 
-function flashAdded(el){
-  if(!el) return;
-  el.classList.add('added');
-  setTimeout(()=>el.classList.remove('added'), 800);
-}
+    const inpEmail = document.getElementById('email');
+    const inpEmail2 = document.getElementById('email2');
+    const emailErr = document.getElementById('emailErr');
+    const email2Err = document.getElementById('email2Err');
 
-function addToCart(p, delta=1, el=null){
-  const ex = inCart(p.id);
-  if(ex){ ex.qty = Math.max(0, ex.qty + delta); }
-  else if(delta > 0){ cart.push({id:p.id, name:p.name, price_gross:p.price_gross, vat_rate:p.vat_rate, qty:delta}); }
-  cart = cart.filter(i=>i.qty>0);
-  render();
-  // visuelles Feedback + Mobile-Scroll
-  flashAdded(el);
-  smoothKeepVisible(el);
-}
+    const inpName = document.getElementById('name');
+    const inpMsg = document.getElementById('message');
+    const mc = document.getElementById('mc');
 
-function setQty(id, q){
-  const it = inCart(id);
-  if(!it) return;
-  it.qty = Math.max(0, Number(q)||0);
-  cart = cart.filter(i=>i.qty>0);
-  render();
-}
+    const chkAgb = document.getElementById('agb');
+    const agbErr = document.getElementById('agbErr');
 
-function totals(){
-  const gross=cart.reduce((s,i)=>s+i.price_gross*i.qty,0);
-  const vatSum=cart.reduce((s,i)=>{
-    const rate=Number(i.vat_rate||0)/100;
-    const base=i.price_gross;
-    return s+(base-(base/(1+rate)))*i.qty;
-  },0);
-  const net=gross-vatSum;
-  return {items: cart.slice(), net, vatSum, gross};
-}
+    const form = document.getElementById('voucherForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const msgBox = document.getElementById('msg');
 
-function render(){
-  // Produktliste
-  const list=document.getElementById('products');
-  list.innerHTML='';
-  products.forEach(p=>{
-    const card=document.createElement('div');
-    card.className='card';
+    // ==== Utils ====
+    function euro(n){ return (Math.round(Number(n || 0) * 100) / 100).toFixed(2); }
 
-    const title=document.createElement('div');
-    title.className='row space';
-    const name=document.createElement('div');
-    name.textContent=p.name;
-    const price=document.createElement('div');
-    price.className='muted';
-    price.textContent=fmt(p.price_gross)+" €";
-    title.appendChild(name);
-    title.appendChild(price);
-
-    const spacer=document.createElement('div');
-    spacer.style.height="0.8rem";
-
-    const btn=document.createElement('button');
-    btn.className='btn';
-    btn.textContent='Hinzufügen';
-    btn.onclick=()=>addToCart(p, 1, card);
-
-    card.appendChild(title);
-    card.appendChild(spacer);
-    card.appendChild(btn);
-    list.appendChild(card);
-  });
-
-  // Warenkorb
-  const cartEl=document.getElementById('cart');
-  cartEl.innerHTML='';
-  if(cart.length===0){
-    const m=document.createElement('div');
-    m.className='muted';
-    m.textContent='Noch keine Artikel.';
-    cartEl.appendChild(m);
-  }
-  cart.forEach(i=>{
-    const row=document.createElement('div');
-    row.className='cart-row';
-
-    const remove=document.createElement('button');
-    remove.className='btn square cart-remove';
-    remove.setAttribute('aria-label','Entfernen');
-    remove.textContent='✕';
-    remove.onclick=()=>{ cart = cart.filter(a=>a.id!==i.id); render(); };
-
-    const nm=document.createElement('div');
-    nm.className='name';
-    nm.textContent=i.name;
-
-    const qtyWrap = document.createElement('div');
-    qtyWrap.className='qty';
-    const minus = document.createElement('button');
-    minus.className='btn ghost square';
-    minus.setAttribute('aria-label','Menge verringern');
-    minus.textContent='−';
-    minus.onclick=()=>setQty(i.id, i.qty-1);
-    const num = document.createElement('div');
-    num.className='num';
-    num.textContent = i.qty;
-    const plus = document.createElement('button');
-    plus.className='btn ghost square';
-    plus.setAttribute('aria-label','Menge erhöhen');
-    plus.textContent='+';
-    plus.onclick=()=>setQty(i.id, i.qty+1);
-    qtyWrap.appendChild(minus);
-    qtyWrap.appendChild(num);
-    qtyWrap.appendChild(plus);
-
-    const sum=document.createElement('div');
-    sum.className='sum';
-    sum.textContent = fmt(i.qty*i.price_gross)+" €";
-
-    row.appendChild(remove);
-    row.appendChild(nm);
-    row.appendChild(qtyWrap);
-    row.appendChild(sum);
-    cartEl.appendChild(row);
-  });
-
-  const t=totals();
-  document.getElementById('t-net').textContent=fmt(t.net)+" €";
-  document.getElementById('t-vat').textContent=fmt(t.vatSum)+" €";
-  document.getElementById('t-gross').textContent=fmt(t.gross)+" €";
-}
-
-// Submit
-document.getElementById('submit').addEventListener('click', async ()=>{
-  const name=document.getElementById('c-name').value.trim();
-  const email=document.getElementById('c-email').value.trim();
-  const room=document.getElementById('c-room').value;
-  const notes=document.getElementById('c-notes').value.trim();
-  const pay=document.getElementById('c-pay').value;
-  const msg=document.getElementById('msg');
-
-  const t=totals();
-  if(!t.items.length){
-    msg.textContent="Bitte mindestens einen Artikel wählen."; msg.className="muted danger"; return;
-  }
-
-  if (!window.CONFIG.ENDPOINT_URL) {
-    msg.textContent="Server-Endpunkt fehlt (ENDPOINT_URL).";
-    msg.className="muted danger";
-    return;
-  }
-
-  msg.textContent="Sende Bestellung …";
-  msg.className="muted";
-
-  try{
-    const res = await fetch(window.CONFIG.ENDPOINT_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        cart: t.items.map(i=>({ id:i.id, name:i.name, qty:i.qty, price_gross:i.price_gross, vat_rate:i.vat_rate })),
-        totals: { net:t.net, vatSum:t.vatSum, gross:t.gross },
-        customer: { name, email, room, notes, pay },
-        currency: 'EUR',
-        source: 'mini-webshop'
-      })
-    });
-    const data = await res.json().catch(()=>({}));
-    if(!res.ok) throw new Error((data && (data.error||data.detail)) || ('HTTP '+res.status));
-
-    // Online-Zahlung?
-    if (data.mode === 'online' && data.checkoutUrl) {
-      // lokale Kopie für thankyou.html
-      localStorage.setItem('lastOrder', JSON.stringify({
-        items: t.items,
-        totals: { net: t.net, vatSum: t.vatSum, gross: t.gross },
-        customer: { name, email, room, notes, pay }
-      }));
-      window.location.href = data.checkoutUrl;
-      return;
+    function showMsg(text, ok=false){
+      msgBox.textContent = text;
+      msgBox.classList.toggle('ok', !!ok);
+      msgBox.style.display = 'block';
+      setTimeout(() => { msgBox.style.display = 'none'; }, 6000);
     }
 
-    // Offline-Fall (Bar/Zimmerrechnung)
-    msg.textContent = "Bestellung übermittelt. Du erhältst gleich eine Bestätigung per E-Mail.";
-    msg.className = "muted";
+    function applyArtikelToUI(artikel){
+      const typeText = (artikel.betragstyp || '').toLowerCase();
+      const isFixed = typeText.includes('fest');
 
-    // Warenkorb leeren
-    cart = [];
-    render();
+      if (isFixed) {
+        // Festpreis → Wert aus API, nicht editierbar
+        const v = artikel.preis != null ? euro(artikel.preis) : '';
+        inpBetrag.value = v;
+        inpBetrag.readOnly = true;
+        inpBetrag.min = '';
+        inpBetrag.max = '';
+        inpBetrag.placeholder = v ? `${v} €` : '';
+        betragHint.textContent = 'Festpreis – Vorgabe aus Artikel';
+      } else {
+        // Wertgutschein → frei (Min/Max)
+        inpBetrag.readOnly = false;
+        const min = artikel.min != null ? Number(artikel.min) : 0;
+        const max = artikel.max != null ? Number(artikel.max) : 0;
+        inpBetrag.min = min ? String(min) : '0.01';
+        inpBetrag.max = max ? String(max) : '';
+        const hintParts = [];
+        if (min) hintParts.push(`min. ${euro(min)} €`);
+        if (max) hintParts.push(`max. ${euro(max)} €`);
+        betragHint.textContent = hintParts.length ? hintParts.join(' · ') : 'Bitte gewünschten Betrag eingeben';
+        if (!inpBetrag.value) {
+          inpBetrag.placeholder = hintParts.length ? hintParts.join(' · ') : 'z. B. 50,00';
+        }
+      }
 
-  }catch(e){
-    msg.textContent='Fehler: '+(e.message||e);
-    msg.className='muted danger';
-  }
-});
-</script>
+      artikelHint.textContent = artikel.name || '';
+    }
+
+    function currentArtikelObj(){
+      const opt = selArtikel.options[selArtikel.selectedIndex];
+      if (!opt) return null;
+      try { return JSON.parse(opt.dataset.itemJson); } catch { return null; }
+    }
+
+    // ==== Artikel laden ====
+    async function loadArticles(){
+      selArtikel.innerHTML = '<option>Lade…</option>';
+      try {
+        const r = await fetch(`${BACKEND_BASE}/vouchers/articles`, { credentials: 'omit' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        const items = Array.isArray(data.items) ? data.items.filter(x => x.aktiv !== false) : [];
+        selArtikel.innerHTML = '';
+        for (const it of items) {
+          const opt = document.createElement('option');
+          opt.value = it.id;
+          opt.textContent = it.name;
+          opt.dataset.itemJson = JSON.stringify(it);
+          selArtikel.appendChild(opt);
+        }
+        if (items[0]) {
+          selArtikel.value = items[0].id;
+          applyArtikelToUI(items[0]);
+        }
+      } catch (e) {
+        selArtikel.innerHTML = '<option>Fehler beim Laden</option>';
+        showMsg('Fehler beim Laden der Artikel. Bitte später erneut versuchen.');
+      }
+    }
+
+    selArtikel.addEventListener('change', () => {
+      const obj = currentArtikelObj();
+      if (obj) applyArtikelToUI(obj);
+    });
+
+    // ==== Email-Checks ====
+    function validateEmails(){
+      let ok = true;
+      emailErr.hidden = true; email2Err.hidden = true;
+      if (!inpEmail.value || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(inpEmail.value)) { emailErr.hidden = false; ok = false; }
+      if (inpEmail.value !== inpEmail2.value) { email2Err.hidden = false; ok = false; }
+      return ok;
+    }
+
+    // Nachricht Counter
+    inpMsg.addEventListener('input', () => { mc.textContent = String(inpMsg.value.length); });
+
+    // ==== Submit ====
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      if (!validateEmails()) return;
+      if (!chkAgb.checked) { agbErr.hidden = false; chkAgb.focus(); return; } else { agbErr.hidden = true; }
+
+      const artikel = currentArtikelObj();
+      if (!artikel) { showMsg('Bitte einen Gutschein auswählen.'); return; }
+
+      const payload = {
+        artikel_id: selArtikel.value,
+        anzahl: inpAnzahl.value,
+        betrag: inpBetrag.value,
+        email: inpEmail.value,
+        email_confirm: inpEmail2.value,
+        name: inpName.value,
+        message_to_recipient: inpMsg.value,
+        agb: chkAgb.checked,
+        waehrung: 'EUR' // UI zeigt kein Währungsfeld; Server akzeptiert/überschreibt ohnehin EUR
+      };
+
+      submitBtn.disabled = true;
+      try {
+        const r = await fetch(`${BACKEND_BASE}/vouchers/order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          showMsg(data?.error || 'Fehler beim Absenden. Bitte erneut versuchen.');
+          submitBtn.disabled = false;
+          return;
+        }
+        if (data.redirectUrl) {
+          window.location.href = data.redirectUrl;
+        } else {
+          showMsg('Antwort ohne redirectUrl.');
+          submitBtn.disabled = false;
+        }
+      } catch (e) {
+        showMsg('Netzwerkfehler: ' + (e?.message || e));
+        submitBtn.disabled = false;
+      }
+    });
+
+    // Start
+    loadArticles();
+  </script>
 </body>
 </html>
