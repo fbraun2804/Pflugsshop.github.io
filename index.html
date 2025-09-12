@@ -4,129 +4,491 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gutschein bestellen</title>
+  <meta name="description" content="Gutscheine online kaufen und als PDF per E‑Mail erhalten." />
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
-    form { display: grid; gap: 1rem; }
-    label { display: grid; gap: 0.35rem; }
-    input, select, textarea { padding: .6rem; font-size: 1rem; }
-    button { padding: .75rem 1rem; font-size: 1rem; cursor: pointer; }
-    #out { white-space: pre-wrap; background: #f6f6f6; padding: .75rem; border-radius: .5rem; display:none; }
-    .err { color:#b00020 }
-    .ok { color:#0a7d00 }
+    :root{
+      --bg:#0b0c0f; --card:#14161a; --muted:#8a9099; --text:#eef0f3; --accent:#3aa76d; --accent-2:#2e8859; --danger:#d32f2f; --border:#262a31;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:linear-gradient(180deg,#0b0c0f,#0e1116);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    a{color:#8ecae6}
+    .container{max-width:960px;margin:40px auto;padding:0 16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:20px}
+    .header{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+    .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#79e2a5)}
+    h1{font-size:1.5rem;margin:0}
+    p.lead{margin:.25rem 0 .5rem;color:var(--muted)}
+
+    form{display:grid;gap:18px}
+
+    /* Row layouts */
+    .row{display:grid;gap:12px}
+    .row--voucher{grid-template-columns:1fr 130px 200px;align-items:start}
+    @media (max-width:760px){.row--voucher{grid-template-columns:1fr;}}
+
+    /* Fields */
+    .field{display:grid;grid-template-rows:auto auto auto;gap:6px}
+    .field label{font-weight:600}
+    .field input[type="text"],
+    .field input[type="email"],
+    .field input[type="number"],
+    .field select,
+    .field textarea{width:100%;padding:12px 12px;border:1px solid var(--border);border-radius:10px;background:#0f1116;color:var(--text);outline:none}
+    .field textarea{min-height:96px;resize:vertical}
+
+    .amount-input{position:relative}
+    .amount-input input{padding-right:42px}
+    .amount-input .suffix{position:absolute;right:10px;top:50%;translate:0 -50%;opacity:.8}
+
+    .hint{font-size:.85rem;color:var(--muted)}
+    .field__error{min-height:1.1em;font-size:.9rem;color:var(--danger)}
+    .field--invalid input,
+    .field--invalid select,
+    .field--invalid textarea{border-color:var(--danger)}
+
+    .checkbox{grid-template-columns:auto 1fr;align-items:center}
+    .checkbox input{width:18px;height:18px}
+
+    .controls{display:flex;gap:12px;align-items:center}
+    .btn{appearance:none;border:none;border-radius:12px;padding:12px 18px;background:var(--accent);color:#08110b;font-weight:700;cursor:pointer}
+    .btn[disabled]{opacity:.65;cursor:not-allowed}
+    .btn.secondary{background:#2b2f36;color:var(--text)}
+
+    .form-alert{border:1px solid var(--border);border-radius:12px;padding:12px;background:#111318}
+    .form-alert.error{border-color:var(--danger);background:#1a1010}
+    .hidden{display:none !important}
+
+    .aside{margin-top:8px;color:var(--muted);font-size:.9rem}
+    .char-counter{justify-self:end;color:var(--muted);font-size:.85rem}
+
+    /* Small utility chips */
+    .chip{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:.8rem;color:var(--muted)}
   </style>
 </head>
 <body>
-  <h1>Gutschein bestellen (Test)</h1>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Gutschein bestellen</h1>
+          <p class="lead">Gutschein auswählen, online bezahlen, sofort per E‑Mail als PDF erhalten.</p>
+        </div>
+      </div>
 
-  <form id="f" novalidate>
-    <label>
-      Gutschein-Artikel-ID (Tabelle 1135)
-      <input type="number" name="artikel_id" required placeholder="z. B. 1" />
-    </label>
+      <div id="formAlert" class="form-alert hidden" role="alert" aria-live="polite"></div>
 
-    <label>
-      Anzahl
-      <input type="number" name="anzahl" value="1" min="1" max="50" required />
-    </label>
+      <form id="voucherForm" novalidate>
+        <!-- Erste Zeile: Gutschein / Anzahl / Wert -->
+        <div class="row row--voucher">
+          <div class="field" id="field-voucher">
+            <label for="voucherType">Gewählter Gutschein</label>
+            <select id="voucherType" name="gutschein" aria-describedby="voucherHint voucherError"></select>
+            <div class="hint" id="voucherHint">Bitte Gutschein wählen.</div>
+            <p class="field__error" id="voucherError" aria-live="polite"></p>
+          </div>
 
-    <label>
-      Betrag (nur bei „Wählbarer Betrag“ nötig)
-      <input type="number" name="betrag" step="0.01" placeholder="z. B. 50.00" />
-    </label>
+          <div class="field" id="field-qty">
+            <label for="quantity">Anzahl</label>
+            <input id="quantity" name="anzahl" type="number" inputmode="numeric" min="1" step="1" value="1" aria-describedby="qtyError" />
+            <div class="hint">1–50 Stück</div>
+            <p class="field__error" id="qtyError" aria-live="polite"></p>
+          </div>
 
-    <label>
-      Ihre E-Mail
-      <input type="email" name="email" required />
-    </label>
+          <div class="field" id="amountField">
+            <label for="amount">Wert (EUR)</label>
+            <div class="amount-input">
+              <input id="amount" name="betrag" type="text" inputmode="decimal" autocomplete="off" aria-describedby="amountHint amountError" />
+              <span class="suffix">€</span>
+            </div>
+            <div class="hint" id="amountHint">Bitte Betrag eingeben (z. B. 50,00).</div>
+            <p class="field__error" id="amountError" aria-live="polite"></p>
+          </div>
+        </div>
 
-    <label>
-      Ihr Name (optional)
-      <input type="text" name="name" />
-    </label>
+        <!-- Kundendaten -->
+        <div class="row">
+          <div class="field" id="field-name">
+            <label for="buyerName">Ihr Name (optional)</label>
+            <input id="buyerName" name="name" type="text" aria-describedby="nameError" />
+            <div class="hint">Wird für den Gutschein‑Versand genutzt.</div>
+            <p class="field__error" id="nameError" aria-live="polite"></p>
+          </div>
+        </div>
 
-    <label>
-      Nachricht an Empfänger (optional)
-      <textarea name="message_to_recipient" rows="3"></textarea>
-    </label>
+        <div class="row">
+          <div class="field" id="field-email">
+            <label for="email">E‑Mail</label>
+            <input id="email" name="email" type="email" autocomplete="email" required aria-describedby="emailHint emailError" />
+            <div class="hint" id="emailHint">Bitte sorgfältig prüfen – der Gutschein wird als PDF an diese Adresse gesendet.</div>
+            <p class="field__error" id="emailError" aria-live="polite"></p>
+          </div>
 
-    <label style="display:flex; gap:.5rem; align-items:center">
-      <input type="checkbox" name="agb" required />
-      <span>Ich akzeptiere die AGB.</span>
-    </label>
+          <div class="field" id="field-email2">
+            <label for="email2">E‑Mail wiederholen</label>
+            <input id="email2" name="email_confirm" type="email" autocomplete="email" aria-describedby="email2Error" />
+            <div class="hint">Muss mit der ersten E‑Mail übereinstimmen.</div>
+            <p class="field__error" id="email2Error" aria-live="polite"></p>
+          </div>
+        </div>
 
-    <label>
-      Währung
-      <select name="waehrung">
-        <option value="EUR" selected>EUR</option>
-      </select>
-    </label>
+        <div class="row">
+          <div class="field" id="field-message">
+            <div class="controls" style="justify-content:space-between">
+              <label for="message">Nachricht an Empfänger (optional)</label>
+              <div class="char-counter"><span id="msgCount">0</span>/300</div>
+            </div>
+            <textarea id="message" name="message_to_recipient" maxlength="300" placeholder="Z. B. „Alles Gute zum Geburtstag!“"></textarea>
+            <p class="field__error" id="messageError" aria-live="polite"></p>
+          </div>
+        </div>
 
-    <button type="submit">Jetzt bezahlen (Test)</button>
-  </form>
+        <div class="row">
+          <div class="field checkbox" id="field-agb">
+            <input type="checkbox" id="agb" name="agb" aria-describedby="agbError" />
+            <label for="agb">Ich akzeptiere die <a href="/agb.html" target="_blank" rel="noopener">AGB</a>.</label>
+            <p class="field__error" id="agbError" aria-live="polite"></p>
+          </div>
+        </div>
 
-  <div id="out"></div>
+        <div class="controls">
+          <button class="btn" type="submit" id="submitBtn">Jetzt bezahlen</button>
+          <span class="chip" id="priceChip" aria-live="polite"></span>
+        </div>
+
+        <div class="aside">Nach der Zahlung erhalten Sie den/die Gutschein(e) sofort per E‑Mail als PDF. Die Einlösung erfolgt bei uns vor Ort mithilfe der Gutscheinnummer. Teileinlösungen sind möglich.</div>
+      </form>
+    </div>
+  </div>
 
   <script>
-    const ENDPOINT = "https://vouchers-backend.f-braun.workers.dev/vouchers/order";
-    const form = document.getElementById("f");
-    const out  = document.getElementById("out");
+    // ==== KONFIGURATION ====
+    // Backend-URL des Cloudflare Workers (bei Bedarf anpassen)
+    const BACKEND_BASE = "https://vouchers-backend.f-braun.workers.dev";
 
-    function show(msg, ok=false){
-      out.style.display = "block";
-      out.className = ok ? "ok" : "err";
-      out.textContent = typeof msg === "string" ? msg : JSON.stringify(msg, null, 2);
+    // ==== HILFSFUNKTIONEN ====
+    const $ = sel => document.querySelector(sel);
+    const fmtEuro = n => {
+      if (n == null || !isFinite(n)) return "";
+      return n.toFixed(2).replace(".", ",") + " \u20AC"; // Euro
+    };
+    const parseDE = str => {
+      if (!str) return NaN;
+      return Number(String(str).trim().replace(/\./g, "").replace(",", "."));
+    };
+
+    function setError(fieldEl, errEl, message) {
+      if (!fieldEl || !errEl) return;
+      if (message) {
+        fieldEl.classList.add('field--invalid');
+        errEl.textContent = message;
+      } else {
+        fieldEl.classList.remove('field--invalid');
+        errEl.textContent = '';
+      }
     }
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      out.style.display = "none";
+    function setFormAlert(type, text){
+      const box = $('#formAlert');
+      if (!box) return;
+      if (!text){ box.classList.add('hidden'); box.textContent=''; return; }
+      box.textContent = text;
+      box.classList.toggle('error', type === 'error');
+      box.classList.remove('hidden');
+    }
 
-      const fd = new FormData(form);
-      const payload = {
-        artikel_id: Number(fd.get("artikel_id")),
-        anzahl:     Number(fd.get("anzahl")),
-        betrag:     fd.get("betrag") ? Number(fd.get("betrag")) : null,
-        email:      String(fd.get("email") || "").trim(),
-        name:       String(fd.get("name") || "").trim(),
-        agb:        fd.get("agb") ? true : false,
-        message_to_recipient: String(fd.get("message_to_recipient") || "").trim(),
-        waehrung:   String(fd.get("waehrung") || "EUR").trim(),
-      };
+    function euroRangeHint(min, max){
+      const parts = [];
+      if (isFinite(min) && min>0) parts.push(`ab ${fmtEuro(min)}`);
+      if (isFinite(max) && max>0) parts.push(`bis ${fmtEuro(max)}`);
+      return parts.length ? `Erlaubter Bereich: ${parts.join(' ')}` : '';
+    }
 
-      // einfache Client-Checks
-      if(!payload.artikel_id || !payload.anzahl || !payload.email || !payload.agb){
-        show("Bitte Artikel-ID, Anzahl, E-Mail und AGB prüfen."); return;
-      }
+    // ==== ELEMENTE ====
+    const voucherSelect = $('#voucherType');
+    const voucherError  = $('#voucherError');
+    const voucherField  = $('#field-voucher');
+    const voucherHint   = $('#voucherHint');
+
+    const qtyInput   = $('#quantity');
+    const qtyError   = $('#qtyError');
+    const qtyField   = $('#field-qty');
+
+    const amountInput = $('#amount');
+    const amountField = $('#amountField');
+    const amountHint  = $('#amountHint');
+    const amountError = $('#amountError');
+
+    const nameInput = $('#buyerName');
+
+    const emailInput = $('#email');
+    const email2Input = $('#email2');
+    const emailError = $('#emailError');
+    const email2Error = $('#email2Error');
+
+    const messageInput = $('#message');
+    const msgCount = $('#msgCount');
+
+    const agbCheck = $('#agb');
+    const agbError = $('#agbError');
+
+    const priceChip = $('#priceChip');
+    const submitBtn = $('#submitBtn');
+
+    // ==== ARTIKEL LADEN ====
+    let articles = [];
+    let currentArticle = null;
+
+    async function loadArticles(){
+      setFormAlert(null, null);
+      voucherSelect.innerHTML = '';
+      const optLoading = document.createElement('option');
+      optLoading.textContent = 'Lade Gutscheine…';
+      optLoading.value = '';
+      voucherSelect.appendChild(optLoading);
 
       try{
-        const res = await fetch(ENDPOINT, {
-          method: "POST",
-          mode: "cors",
-          headers: { "Content-Type": "application/json" },
-          credentials: "omit",
-          body: JSON.stringify(payload),
-          redirect: "follow",
+        const r = await fetch(`${BACKEND_BASE}/vouchers/articles`, { method:'GET' });
+        if (!r.ok) throw new Error('Artikel konnten nicht geladen werden');
+        const data = await r.json();
+        articles = Array.isArray(data.items) ? data.items : [];
+        articles.sort((a,b)=> String(a.name||'').localeCompare(String(b.name||''), 'de'));
+
+        voucherSelect.innerHTML = '';
+        const opt0 = document.createElement('option');
+        opt0.value = '';
+        opt0.textContent = 'Bitte auswählen…';
+        voucherSelect.appendChild(opt0);
+
+        for (const item of articles){
+          const o = document.createElement('option');
+          o.value = item.id;
+          o.dataset.betragstyp = (item.betragstyp||'').toLowerCase();
+          if (isFinite(item.preis)) o.dataset.preis = String(item.preis);
+          if (isFinite(item.min))   o.dataset.min   = String(item.min);
+          if (isFinite(item.max))   o.dataset.max   = String(item.max);
+          o.dataset.waehrung = (item.waehrung||'EUR').toUpperCase();
+
+          let suffix = '';
+          if ((o.dataset.betragstyp||'').includes('fest') && isFinite(item.preis)) {
+            suffix = ` · Festpreis ${fmtEuro(item.preis)}`;
+          } else {
+            const hint = euroRangeHint(item.min, item.max);
+            if (hint) suffix = ` · ${hint}`;
+          }
+          o.textContent = `${item.name}${suffix}`;
+          voucherSelect.appendChild(o);
+        }
+        onVoucherChange();
+      }catch(e){
+        setFormAlert('error', 'Fehler beim Laden der Gutscheine. Bitte Seite neu laden.');
+      }
+    }
+
+    function onVoucherChange(){
+      setError(voucherField, voucherError, '');
+      const id = voucherSelect.value;
+      currentArticle = articles.find(a => String(a.id) === String(id)) || null;
+
+      if (!currentArticle){
+        amountInput.value = '';
+        amountInput.disabled = false;
+        amountInput.readOnly = false;
+        amountHint.textContent = 'Bitte Betrag eingeben (z. B. 50,00).';
+        priceChip.textContent = '';
+        return;
+      }
+
+      const type = String((currentArticle.betragstyp||'').toLowerCase());
+      if (type.includes('fest') && isFinite(currentArticle.preis)){
+        // Festpreis: Feld befüllen & sperren
+        amountInput.value = String(currentArticle.preis).replace('.', ',');
+        amountInput.disabled = true;
+        amountInput.readOnly = true;
+        amountInput.dataset.min = '';
+        amountInput.dataset.max = '';
+        amountHint.textContent = 'Festpreis – der Betrag ist vorgegeben.';
+      } else {
+        // Wertgutschein: Feld aktivieren und Range anzeigen
+        amountInput.disabled = false;
+        amountInput.readOnly = false;
+        if (isFinite(currentArticle.min)) amountInput.dataset.min = String(currentArticle.min); else amountInput.dataset.min = '';
+        if (isFinite(currentArticle.max)) amountInput.dataset.max = String(currentArticle.max); else amountInput.dataset.max = '';
+        amountHint.textContent = euroRangeHint(currentArticle.min, currentArticle.max) || 'Bitte Betrag eingeben (z. B. 50,00).';
+        if (!amountInput.value) amountInput.placeholder = 'z. B. 50,00';
+      }
+      updatePriceChip();
+    }
+
+    function updatePriceChip(){
+      const qty = Math.max(1, parseInt(qtyInput.value||'1',10)||1);
+      let unit = NaN;
+      if (currentArticle){
+        const type = (currentArticle.betragstyp||'').toLowerCase();
+        if (type.includes('fest')) unit = Number(currentArticle.preis);
+        else unit = parseDE(amountInput.value);
+      }
+      if (isFinite(unit)) {
+        const total = unit * qty;
+        priceChip.textContent = `Zwischensumme: ${fmtEuro(total)}`;
+      } else {
+        priceChip.textContent = '';
+      }
+    }
+
+    // ==== VALIDIERUNG ====
+    function validateVoucher(){
+      if (!currentArticle){ setError(voucherField, voucherError, 'Bitte einen Gutschein auswählen.'); return false; }
+      setError(voucherField, voucherError, '');
+      return true;
+    }
+
+    function validateQty(){
+      const n = parseInt(qtyInput.value,10);
+      if (!Number.isInteger(n) || n<1 || n>50){ setError(qtyField, qtyError, 'Bitte eine Anzahl zwischen 1 und 50 wählen.'); return false; }
+      setError(qtyField, qtyError, '');
+      return true;
+    }
+
+    function validateAmount(show=true){
+      if (!currentArticle){ setError(amountField, amountError, show ? 'Bitte Gutschein wählen.' : ''); return false; }
+      const type = (currentArticle.betragstyp||'').toLowerCase();
+      if (type.includes('fest')) { setError(amountField, amountError, ''); return true; }
+
+      const raw = amountInput.value.trim();
+      const v = parseDE(raw);
+      const min = Number(amountInput.dataset.min || '');
+      const max = Number(amountInput.dataset.max || '');
+      let msg = '';
+      if (!raw) msg = 'Bitte einen Betrag eingeben.';
+      else if (!isFinite(v)) msg = 'Bitte einen gültigen Betrag eingeben (z. B. 25 oder 25,00).';
+      else if (isFinite(min) && min>0 && v<min) msg = `Der Mindestbetrag beträgt ${fmtEuro(min)}`;
+      else if (isFinite(max) && max>0 && v>max) msg = `Der Höchstbetrag beträgt ${fmtEuro(max)}`;
+
+      if (msg && show){ setError(amountField, amountError, msg); return false; }
+      setError(amountField, amountError, '');
+      return !msg;
+    }
+
+    function validateEmail(){
+      const v = (emailInput.value||'').trim();
+      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+      if (!ok){ setError($('#field-email'), emailError, 'Bitte eine gültige E‑Mail-Adresse angeben.'); return false; }
+      setError($('#field-email'), emailError, '');
+      return true;
+    }
+
+    function validateEmail2(){
+      const v1 = (emailInput.value||'').trim();
+      const v2 = (email2Input.value||'').trim();
+      if (v2 && v1 !== v2){ setError($('#field-email2'), email2Error, 'E‑Mail-Wiederholung stimmt nicht überein.'); return false; }
+      setError($('#field-email2'), email2Error, '');
+      return true;
+    }
+
+    function validateAGB(){
+      if (!agbCheck.checked){ setError($('#field-agb'), agbError, 'Bitte AGB akzeptieren.'); return false; }
+      setError($('#field-agb'), agbError, '');
+      return true;
+    }
+
+    // ==== EVENTS ====
+    voucherSelect.addEventListener('change', ()=>{ onVoucherChange(); validateVoucher(); });
+    qtyInput.addEventListener('input', ()=>{ validateQty(); updatePriceChip(); });
+    amountInput.addEventListener('input', ()=>{ validateAmount(true); updatePriceChip(); });
+
+    emailInput.addEventListener('blur', validateEmail);
+    email2Input.addEventListener('input', validateEmail2);
+
+    messageInput.addEventListener('input', ()=>{ const len=messageInput.value.length; msgCount.textContent=String(len); });
+
+    // ==== SUBMIT ====
+    $('#voucherForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      setFormAlert(null, null);
+
+      const vOK = validateVoucher();
+      const qOK = validateQty();
+      const aOK = validateAmount(true);
+      const eOK = validateEmail();
+      const e2OK= validateEmail2();
+      const gOK = validateAGB();
+
+      if (!(vOK && qOK && aOK && eOK && e2OK && gOK)){
+        // Fokus auf erstes fehlerhaftes Feld
+        const firstInvalid = document.querySelector('.field.field--invalid input, .field.field--invalid select, .field.field--invalid textarea');
+        if (firstInvalid) firstInvalid.focus();
+        return;
+      }
+
+      // Payload bauen
+      const payload = {
+        artikel_id: currentArticle ? currentArticle.id : null,
+        anzahl: parseInt(qtyInput.value,10)||1,
+        betrag: (currentArticle && (currentArticle.betragstyp||'').toLowerCase().includes('fest')) ? (currentArticle.preis) : amountInput.value,
+        email: emailInput.value.trim(),
+        email_confirm: email2Input.value.trim() || undefined,
+        name: nameInput.value.trim(),
+        message_to_recipient: messageInput.value.trim(),
+        waehrung: (currentArticle && currentArticle.waehrung) ? currentArticle.waehrung : 'EUR',
+        agb: agbCheck.checked
+      };
+
+      // Submit sperren
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Weiter zu Mollie…';
+
+      try{
+        const res = await fetch(`${BACKEND_BASE}/vouchers/order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
 
-        const text = await res.text().catch(()=> "");
-        // zeige Rohantwort bei Fehler
-        if(!res.ok){
-          try { show(JSON.parse(text)); } catch { show(text || `${res.status} ${res.statusText}`); }
+        const dataText = await res.text();
+        let data; try { data = JSON.parse(dataText); } catch { data = { raw: dataText }; }
+
+        if (res.ok && data && data.redirectUrl){
+          window.location.href = data.redirectUrl;
           return;
         }
 
-        let data = null;
-        try { data = JSON.parse(text); } catch {}
-        if(!data || !data.redirectUrl){ show("Unerwartete Antwort – keine redirectUrl."); return; }
-
-        // success anzeigen & weiterleiten
-        show({info:"Weiterleitung zu Mollie…", redirectUrl: data.redirectUrl}, true);
-        window.location.href = data.redirectUrl;
-      }catch(err){
-        console.error(err);
-        show("Netzwerkfehler – bitte später erneut versuchen.");
+        // Fehlerfälle
+        if (res.status === 422){
+          // Validierungsfehler vom Backend
+          const problems = data?.problems || [];
+          let top = '';
+          for (const p of problems){
+            if (p.field === 'betrag'){ setError(amountField, amountError, p.message); }
+            else if (p.field === 'email'){ setError($('#field-email'), emailError, p.message); }
+            else if (p.field === 'email_confirm'){ setError($('#field-email2'), email2Error, p.message); }
+            else if (p.field === 'anzahl'){ setError(qtyField, qtyError, p.message); }
+            else if (p.field === 'artikel_id'){ setError(voucherField, voucherError, p.message); }
+            else if (p.field === 'agb'){ setError($('#field-agb'), agbError, p.message); }
+            else { top = p.message || top; }
+          }
+          if (!problems.length && data?.error === 'amount_out_of_range'){
+            // älteres/alternatives Backendformat
+            const min = data?.details?.min; const max = data?.details?.max;
+            const msg = (min||max) ? `Bitte Betrag ${euroRangeHint(min,max)} eingeben.` : 'Betrag außerhalb des erlaubten Bereichs.';
+            setError(amountField, amountError, msg);
+          }
+          setFormAlert('error', top || 'Bitte Eingaben prüfen.');
+        } else {
+          const msg = data?.message || 'Unerwarteter Fehler beim Absenden.';
+          setFormAlert('error', msg);
+        }
+      } catch (err){
+        setFormAlert('error', 'Netzwerkfehler. Bitte erneut versuchen.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Jetzt bezahlen';
       }
     });
+
+    // Init
+    loadArticles();
   </script>
 </body>
 </html>
